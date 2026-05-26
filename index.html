@@ -1,7 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Busca de Endereço por UBS - Sorocaba</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 700px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
+        /* Estrutura Flexbox */
+        .busca-box { display: flex; gap: 10px; margin-bottom: 20px; }
+        input[type="text"] { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        button { padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; white-space: nowrap; }
+        button:hover { background-color: #0056b3; }
+        
+        #map { height: 400px; width: 100%; margin-top: 20px; border-radius: 4px; display: none; z-index: 1; }
+        #resultado { margin-top: 20px; padding: 15px; border-radius: 4px; font-weight: bold; display: none; }
+        .sucesso { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .erro { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Descubra sua UBS - Sorocaba</h2>
+    <p>Digite seu endereço completo (Ex: Avenida General Carneiro):</p>
+    
+    <div class="busca-box">
+        <input type="text" id="endereco" placeholder="Rua, número, Sorocaba - SP">
+        <button onclick="buscarEndereco()">Buscar</button>
+    </div>
+
+    <div id="resultado"></div>
+    <div id="map"></div>
+</div>
+
 <script>
     let dadosUbs = null;
     let map = null;
-    let camadasBusca = L.layerGroup(); // Grupo para limpar facilmente as marcações antigas do mapa
+    let camadasBusca = L.layerGroup();
     let camadasPoligonos = L.layerGroup(); 
 
     function initMap(lat, lon, zoom = 14) {
@@ -26,7 +69,10 @@
             dadosUbs = data;
             console.log("Dados das UBS carregados com sucesso!");
         })
-        .catch(error => mostrarResultado("Erro ao carregar banco de dados das UBS.", "erro"));
+        .catch(error => {
+            mostrarResultado("Erro ao carregar banco de dados das UBS.", "erro");
+            console.error(error);
+        });
 
     function buscarEndereco() {
         const enderecoDigitado = document.getElementById('endereco').value;
@@ -38,7 +84,6 @@
         const buscaFinal = enderecoDigitado.toLowerCase().includes("sorocaba") ? enderecoDigitado : `${enderecoDigitado}, Sorocaba, SP`;
         mostrarResultado("Analisando malha viária...", "info");
 
-        // ADIÇÃO CRÍTICA: &polygon_geojson=1 traz o formato exato (ponto ou linha da rua inteira)
         const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaFinal)}&limit=1&polygon_geojson=1`;
 
         fetch(urlGeocode)
@@ -53,13 +98,10 @@
 
                 const lat = parseFloat(resultados[0].lat);
                 const lon = parseFloat(resultados[0].lon);
-                
-                // Extrai a geometria devolvida pela API (Ponto ou Linha)
                 const formatoGeoJson = resultados[0].geojson;
                 
                 initMap(lat, lon);
 
-                // Desenha o formato retornado no mapa (Ponto ou Linha da rua)
                 const elementoBuscado = L.geoJSON(formatoGeoJson, {
                     style: { color: "#ff0000", weight: 4 },
                     pointToLayer: function (feature, latlng) {
@@ -69,14 +111,14 @@
 
                 let ubsEncontradas = [];
                 let boundsGeral = L.latLngBounds();
+                
+                // Ajuste de segurança para o Turf.js
+                const featureRua = turf.feature(formatoGeoJson);
 
-                // 3. Varre os polígonos usando Intersecção, não apenas Ponto Interno
                 turf.featureEach(dadosUbs, function (currentFeature) {
-                    // booleanIntersects avalia se a linha da rua cruza o polígono da UBS
-                    if (turf.booleanIntersects(formatoGeoJson, currentFeature)) {
+                    if (turf.booleanIntersects(featureRua, currentFeature)) {
                         ubsEncontradas.push(currentFeature.properties.UBS); 
                         
-                        // Desenha o polígono afetado no mapa
                         const poliLayer = L.geoJSON(currentFeature, {
                             style: { color: "#28a745", weight: 2, fillOpacity: 0.15 }
                         }).addTo(camadasPoligonos);
@@ -86,7 +128,6 @@
                 });
 
                 if (ubsEncontradas.length > 0) {
-                    // Remove duplicatas caso a API retorne segmentos repetidos
                     const ubsUnicas = [...new Set(ubsEncontradas)];
                     
                     let htmlResultado = `Endereço localizado! Faz parte da área de abrangência de <b>${ubsUnicas.length}</b> UBS(s):<br><br>`;
@@ -99,7 +140,7 @@
                     }
 
                     mostrarResultado(htmlResultado, "sucesso");
-                    map.fitBounds(boundsGeral); // Ajusta o zoom para mostrar todos os polígonos envolvidos
+                    map.fitBounds(boundsGeral);
 
                 } else {
                     mostrarResultado("Endereço localizado, mas fora das áreas cadastradas.", "erro");
@@ -116,3 +157,5 @@
         divResultado.className = tipo;
     }
 </script>
+</body>
+</html>
