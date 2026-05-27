@@ -10,36 +10,102 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
-        .container { max-width: 700px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        /* Estilização Moderna e Responsiva */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f4f6f9; 
+            color: #333;
+        }
+        .container { 
+            max-width: 850px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+        }
+        h2 { margin-top: 0; color: #1e293b; font-size: 24px; }
+        p { color: #64748b; font-size: 15px; margin-bottom: 20px; }
         
-        .busca-box { display: flex; gap: 10px; margin-bottom: 20px; }
-        input[type="text"] { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
-        button { padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; white-space: nowrap; }
-        button:hover { background-color: #0056b3; }
+        .busca-box { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 20px; 
+        }
+        input[type="text"] { 
+            flex: 1; 
+            padding: 14px; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 6px; 
+            font-size: 16px; 
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus { border-color: #3b82f6; }
+        button { 
+            padding: 14px 28px; 
+            background-color: #2563eb; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-size: 16px; 
+            white-space: nowrap; 
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #1d4ed8; }
         
-        #map { height: 500px; width: 100%; margin-top: 20px; border-radius: 4px; display: none; z-index: 1; }
-        #resultado { margin-top: 20px; padding: 15px; border-radius: 4px; font-weight: bold; display: none; }
+        /* Ajuste Dinâmico do Mapa para telas Mobile e PC */
+        #map { 
+            height: 55vh; 
+            min-height: 350px;
+            max-height: 600px;
+            width: 100%; 
+            margin-top: 20px; 
+            border-radius: 8px; 
+            display: none; 
+            z-index: 1; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+        }
+        #resultado { 
+            margin-top: 20px; 
+            padding: 18px; 
+            border-radius: 6px; 
+            font-weight: 600; 
+            line-height: 1.5;
+            display: none; 
+        }
         
-        .sucesso { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .erro { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .info { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+        .sucesso { background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .erro { background-color: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+        .info { background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
 
         /* Estilo do Rótulo do QGIS (Texto com Halo/Contorno Branco) */
         .rotulo-ubs {
             background: none;
             border: none;
             box-shadow: none;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 900;
-            color: #111;
+            color: #1e293b;
             text-align: center;
-            /* Cria o contorno branco perfeitamente legível */
             text-shadow: 
                 -2px -2px 0 #FFF, 2px -2px 0 #FFF, 
                 -2px 2px 0 #FFF, 2px 2px 0 #FFF,
                 -1px 0px 0 #FFF, 1px 0px 0 #FFF,
                 0px -1px 0 #FFF, 0px 1px 0 #FFF;
+        }
+
+        /* Responsividade para Celulares */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .container { padding: 15px; }
+            .busca-box { flex-direction: column; }
+            button { width: 100%; }
+            h2 { font-size: 20px; }
         }
     </style>
 </head>
@@ -64,11 +130,8 @@
     let camadasBusca = L.layerGroup();
     let camadasPoligonos = L.layerGroup(); 
 
-    // Permite buscar ao pressionar a tecla "Enter"
     document.getElementById('endereco').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            buscarEndereco();
-        }
+        if (e.key === 'Enter') { buscarEndereco(); }
     });
 
     function initMap(lat, lon, zoom = 13) {
@@ -76,15 +139,20 @@
         mapDiv.style.display = 'block';
         if (!map) {
             map = L.map('map').setView([lat, lon], zoom);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
+            
+            // ALTERAÇÃO: Utilizando a camada CartoDB Positron (Premium Light, estilo Google Maps)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap contributors © CARTODB'
             }).addTo(map);
+            
             camadasBusca.addTo(map);
             camadasPoligonos.addTo(map);
         }
+        // Força o Leaflet a recalcular o tamanho da tela caso mude a orientação do celular
+        setTimeout(() => { map.invalidateSize(); }, 200);
     }
 
-    // Carrega a base de dados
+    // Carrega a base de dados GeoJSON
     fetch('abrangencia_ubs_sorocaba.json')
         .then(response => {
             if (!response.ok) throw new Error("Falha ao carregar o arquivo.");
@@ -100,12 +168,11 @@
             return;
         }
 
-        // Garante que a busca fique focada em Sorocaba
         const buscaFinal = enderecoDigitado.toLowerCase().includes("sorocaba") ? enderecoDigitado : `${enderecoDigitado}, Sorocaba, SP`;
-        mostrarResultado("Analisando malha viária...", "info");
+        mostrarResultado("Analisando malha viária e corrigindo lacunas...", "info");
 
-        // Limit=10 é crucial para acharmos os vários segmentos de uma avenida longa
-        const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaFinal)}&limit=10&polygon_geojson=1`;
+        // EVOLUÇÃO: Aumentado o limite para 50 para abranger avenidas completas de ponta a ponta
+        const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaFinal)}&limit=50&polygon_geojson=1`;
 
         fetch(urlGeocode)
             .then(response => response.json())
@@ -115,50 +182,84 @@
                 camadasBusca.clearLayers();
                 camadasPoligonos.clearLayers();
 
-                // --------------------------------------------------------------------------------
-                // ALGORITMO DE FILTRAGEM: Prioriza Vias (highways) e ignora Empreendimentos
-                // --------------------------------------------------------------------------------
-                let alvosGeograficos = [];
                 let viasEncontradas = resultados.filter(r => r.class === 'highway');
+                let alvosGeograficos = [];
 
                 if (viasEncontradas.length > 0) {
-                    // Se achou pelo menos um trecho de rua, pega o nome oficial (Ex: "Avenida Doutor Américo Figueiredo")
                     let nomeOficialDaRua = viasEncontradas[0].name;
-                    
-                    // Agrupa TODOS os trechos que compõem essa rua específica (a costura)
                     alvosGeograficos = viasEncontradas.filter(r => r.name === nomeOficialDaRua);
                 } else {
-                    // Se a pessoa digitou um bairro ou número exato que não classificou como 'highway'
                     alvosGeograficos = [resultados[0]];
                 }
-                // --------------------------------------------------------------------------------
 
-                // Centraliza o mapa no primeiro segmento encontrado
                 initMap(parseFloat(alvosGeograficos[0].lat), parseFloat(alvosGeograficos[0].lon));
 
                 let ubsEncontradasFeatures = [];
                 let ubsNomes = new Set();
                 let boundsGeral = L.latLngBounds();
+                
+                // --------------------------------------------------------------------------------
+                // ALGORITMO EXCLUSIVO: CONSTRUÇÃO DA LINHA GUIA INVISÍVEL (GAP FILLER)
+                // --------------------------------------------------------------------------------
+                let linhaGuiaContinua = null;
+                try {
+                    let centroides = alvosGeograficos.map(alvo => {
+                        let feat = turf.feature(alvo.geojson);
+                        return turf.centroid(feat);
+                    });
 
-                // Itera sobre todos os segmentos da rua encontrados (para avenidas longas)
+                    // Ordenação por proximidade (Nearest Neighbor) para ligar os pontos sequencialmente
+                    let centroidesOrdenados = [];
+                    if (centroides.length > 0) {
+                        let restantes = [...centroides];
+                        let atual = restantes.splice(0, 1)[0];
+                        centroidesOrdenados.push(atual);
+                        
+                        while (restantes.length > 0) {
+                            let idxMaisProximo = 0;
+                            let menorDistancia = Infinity;
+                            for (let i = 0; i < restantes.length; i++) {
+                                let d = turf.distance(atual, restantes[i]);
+                                if (d < menorDistancia) {
+                                    menorDistancia = d;
+                                    idxMaisProximo = i;
+                                }
+                            }
+                            atual = restantes.splice(idxMaisProximo, 1)[0];
+                            centroidesOrdenados.push(atual);
+                        }
+                    }
+
+                    if (centroidesOrdenados.length > 1) {
+                        let coordenadasLinhaGuia = centroidesOrdenados.map(c => c.geometry.coordinates);
+                        linhaGuiaContinua = turf.lineString(coordenadasLinhaGuia);
+                    }
+                } catch (err) {
+                    console.warn("Aviso: Não foi possível computar a linha guia de preenchimento.", err);
+                }
+                // --------------------------------------------------------------------------------
+
+                // Itera sobre os segmentos reais e plota na tela
                 alvosGeograficos.forEach(alvo => {
                     const formatoGeoJson = alvo.geojson;
                     const featureElemento = turf.feature(formatoGeoJson);
 
-                    // Desenha o segmento da via buscada (em vermelho)
                     const linhaNoMapa = L.geoJSON(formatoGeoJson, {
-                        style: { color: "#ff0000", weight: 4 },
+                        style: { color: "#ff2222", weight: 5, opacity: 0.85 },
                         pointToLayer: (feature, latlng) => L.marker(latlng)
                     }).addTo(camadasBusca);
                     
                     boundsGeral.extend(linhaNoMapa.getBounds());
 
-                    // Verifica em quais polígonos de UBS este segmento da via cruza
+                    // Varre as UBSs checando intersecção tanto no segmento real quanto na linha guia contínua
                     turf.featureEach(dadosUbs, function (ubsPoligono) {
-                        if (turf.booleanIntersects(featureElemento, ubsPoligono)) {
+                        let cruzaSegmentoReal = turf.booleanIntersects(featureElemento, ubsPoligono);
+                        let cruzaLinhaGuia = linhaGuiaContinua ? turf.booleanIntersects(linhaGuiaContinua, ubsPoligono) : false;
+
+                        // Se cruzar a linha real OU passar pelo buraco remendado pela linha guia:
+                        if (cruzaSegmentoReal || cruzaLinhaGuia) {
                             let nomeUbs = ubsPoligono.properties.UBS;
                             
-                            // Evita adicionar a mesma UBS duas vezes caso múltiplos segmentos cruzem nela
                             if (!ubsNomes.has(nomeUbs)) {
                                 ubsNomes.add(nomeUbs);
                                 ubsEncontradasFeatures.push(ubsPoligono);
@@ -167,7 +268,7 @@
                     });
                 });
 
-                // Se encontrou alguma área de abrangência
+                // Plota os polígonos das UBSs encontradas
                 if (ubsEncontradasFeatures.length > 0) {
                     let htmlResultado = `Logradouro identificado! Cruza a área de abrangência de <b>${ubsEncontradasFeatures.length}</b> UBS(s):<br><br>`;
                     
@@ -175,18 +276,14 @@
                         let nomeUbs = feature.properties.UBS;
                         htmlResultado += `📍 UBS ${nomeUbs}<br>`;
                         
-                        // Desenha o polígono da UBS (verde translúcido)
                         const poliLayer = L.geoJSON(feature, {
-                            style: { color: "#28a745", weight: 2, fillOpacity: 0.15 }
+                            style: { color: "#10b981", weight: 2.5, fillOpacity: 0.12 }
                         }).addTo(camadasPoligonos);
                         
                         boundsGeral.extend(poliLayer.getBounds());
 
-                        // ------------------------------------------------------------------------
-                        // INCLUSÃO DO RÓTULO (ESTILO QGIS) NO CENTRO DO POLÍGONO
-                        // ------------------------------------------------------------------------
+                        // Renderiza o rótulo centralizado (Estilo QGIS)
                         try {
-                            // Encontra o "centro de massa" do polígono para ancorar o texto
                             let centro = turf.centerOfMass(feature);
                             let coords = centro.geometry.coordinates;
                             
@@ -194,27 +291,26 @@
                                 icon: L.divIcon({
                                     className: 'rotulo-ubs',
                                     html: `<div>UBS ${nomeUbs.toUpperCase()}</div>`,
-                                    iconSize: [150, 40],
-                                    iconAnchor: [75, 20] // Centraliza o texto no ponto exato
+                                    iconSize: [160, 40],
+                                    iconAnchor: [80, 20]
                                 }),
-                                interactive: false // Para o texto não bloquear cliques no mapa
+                                interactive: false
                             }).addTo(camadasPoligonos);
                         } catch (e) {
-                            console.warn("Não foi possível calcular o centro do rótulo para a UBS:", nomeUbs);
+                            console.warn("Erro ao gerar rótulo da UBS:", nomeUbs);
                         }
-                        // ------------------------------------------------------------------------
                     });
 
                     if (ubsEncontradasFeatures.length > 1) {
-                         htmlResultado += `<br><small><i>Nota: A via pesquisada cruza múltiplas regiões. Para saber a UBS exata, inclua a numeração no momento da busca no futuro.</i></small>`;
+                         htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via cruza múltiplas regiões de saúde. Para um direcionamento preciso, avalie a numeração do imóvel ao longo do traçado mapeado.</i></small>`;
                     }
 
                     mostrarResultado(htmlResultado, "sucesso");
-                    map.fitBounds(boundsGeral); // Dá o zoom perfeito enquadrando a via e os polígonos
+                    map.fitBounds(boundsGeral, { padding: [30, 30] }); 
 
                 } else {
-                    mostrarResultado("Logradouro localizado, mas fora das áreas cadastradas.", "erro");
-                    map.fitBounds(boundsGeral);
+                    mostrarResultado("Logradouro localizado, mas fora das áreas de UBS cadastradas.", "erro");
+                    map.fitBounds(boundsGeral, { padding: [30, 30] });
                 }
             })
             .catch(error => mostrarResultado(error.message, "erro"));
