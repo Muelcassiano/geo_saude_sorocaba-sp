@@ -10,7 +10,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
     <style>
-        /* Estilização Moderna e Responsiva */
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 0; 
@@ -111,10 +110,10 @@
 
 <div class="container">
     <h2>Descubra sua UBS - Sorocaba</h2>
-    <p>Digite seu logradouro (Ex: Avenida Itavuvu):</p>
+    <p>Digite seu logradouro (Ex: Avenida Itavuvu ou Avenida Brasil 60):</p>
     
     <div class="busca-box">
-        <input type="text" id="endereco" placeholder="Rua, avenida, Sorocaba - SP">
+        <input type="text" id="endereco" placeholder="Rua, avenida, número, Sorocaba - SP">
         <button onclick="buscarEndereco()">Buscar</button>
     </div>
 
@@ -138,7 +137,6 @@
         if (!map) {
             map = L.map('map').setView([lat, lon], zoom);
             
-            // CORREÇÃO: Voltando para o estilo clássico e colorido original do OpenStreetMap
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
@@ -149,7 +147,6 @@
         setTimeout(() => { map.invalidateSize(); }, 200);
     }
 
-    // Carrega a base de dados GeoJSON das UBSs
     fetch('abrangencia_ubs_sorocaba.json')
         .then(response => {
             if (!response.ok) throw new Error("Falha ao carregar o arquivo abrangencia_ubs_sorocaba.json.");
@@ -165,10 +162,16 @@
             return;
         }
 
+        // Verifica dinamicamente se o usuário inseriu algum número na busca
+        const temNumero = /\d+/.test(enderecoDigitado);
         const buscaFinal = enderecoDigitado.toLowerCase().includes("sorocaba") ? enderecoDigitado : `${enderecoDigitado}, Sorocaba, SP`;
-        mostrarResultado("Mapeando malha viária completa de ponta a ponta...", "info");
 
-        // Passo 1: Nominatim descobre o nome oficial padronizado da rua no OSM
+        if (temNumero) {
+            mostrarResultado("Localizando número exato e identificando sua UBS correspondente...", "info");
+        } else {
+            mostrarResultado("Mapeando malha viária completa de ponta a ponta...", "info");
+        }
+
         const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaFinal)}&limit=5&accept-language=pt-BR&email=geosaude.sorocaba.app@gmail.com`;
 
         fetch(urlGeocode)
@@ -177,36 +180,38 @@
                 return response.json();
             })
             .then(resultados => {
-                if (resultados.length === 0) throw new Error("Logradouro não encontrado na base de dados. Tente verificar a grafia.");
+                if (resultados.length === 0) throw new Error("Endereço ou numeração não encontrados na base de dados. Verifique os dados inseridos.");
 
-                let viasEncontradas = resultados.filter(r => r.class === 'highway');
-                let nomeOficial = "";
-                let latCentro = 0, lonCentro = 0;
+                let latCentro = parseFloat(resultados[0].lat);
+                let lonCentro = parseFloat(resultados[0].lon);
 
-                if (viasEncontradas.length > 0) {
-                    nomeOficial = viasEncontradas[0].name;
-                    latCentro = parseFloat(viasEncontradas[0].lat);
-                    lonCentro = parseFloat(viasEncontradas[0].lon);
+                if (temNumero) {
+                    // MODO PONTO: Ignora Overpass se tiver número para focar na coordenada exata do imóvel
+                    return { resultados, temNumero, latCentro, lonCentro, overpassData: null };
                 } else {
-                    nomeOficial = resultados[0].name;
-                    latCentro = parseFloat(resultados[0].lat);
-                    lonCentro = parseFloat(resultados[0].lon);
+                    // MODO LINHA: Continua usando a Overpass API para mapear a rua completa
+                    let viasEncontradas = resultados.filter(r => r.class === 'highway');
+                    let nomeOficial = viasEncontradas.length > 0 ? viasEncontradas[0].name : resultados[0].name;
+                    
+                    if (viasEncontradas.length > 0) {
+                        latCentro = parseFloat(viasEncontradas[0].lat);
+                        lonCentro = parseFloat(viasEncontradas[0].lon);
+                    }
+
+                    const overpassQuery = `[out:json][timeout:15];area["name"="Sorocaba"]->.a;way(area.a)["name"="${nomeOficial}"];out geom;`;
+                    const urlOverpass = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`;
+
+                    return fetch(urlOverpass)
+                        .then(res => {
+                            if (!res.ok) return { elements: [] };
+                            return res.json();
+                        })
+                        .then(overpassData => {
+                            return { resultados, temNumero, nomeOficial, latCentro, lonCentro, overpassData };
+                        });
                 }
-
-                // Passo 2: Consulta à Overpass API buscando TODOS os segmentos da via em Sorocaba (Sem limites de cortes!)
-                const overpassQuery = `[out:json][timeout:15];area["name"="Sorocaba"]->.a;way(area.a)["name"="${nomeOficial}"];out geom;`;
-                const urlOverpass = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`;
-
-                return fetch(urlOverpass)
-                    .then(res => {
-                        if (!res.ok) return { elements: [] }; // Fallback caso Overpass fique offline
-                        return res.json();
-                    })
-                    .then(overpassData => {
-                        return { resultados, nomeOficial, latCentro, lonCentro, overpassData };
-                    });
             })
-            .then(({ resultados, nomeOficial, latCentro, lonCentro, overpassData }) => {
+            .then(({ resultados, temNumero, nomeOficial, latCentro, lonCentro, overpassData }) => {
                 camadasBusca.clearLayers();
                 camadasPoligonos.clearLayers();
                 initMap(latCentro, lonCentro);
@@ -215,61 +220,90 @@
                 let ubsNomes = new Set();
                 let boundsGeral = L.latLngBounds();
 
-                // Se a Overpass API retornou dados com sucesso, usamos a malha 100% completa
-                if (overpassData && overpassData.elements && overpassData.elements.length > 0) {
-                    overpassData.elements.forEach(el => {
-                        if (el.geometry && el.geometry.length > 1) {
-                            let coordsTurf = el.geometry.map(pt => [pt.lon, pt.lat]);
-                            let featureElemento = turf.lineString(coordsTurf);
+                if (temNumero) {
+                    // Executa a lógica de localização precisa por marcador ponto
+                    const infoPonto = resultados[0];
+                    L.marker([latCentro, lonCentro]).addTo(camadasBusca)
+                        .bindPopup(`<b>Localização Encontrada:</b><br>${infoPonto.display_name}`)
+                        .openPopup();
+                    
+                    boundsGeral.extend([latCentro, lonCentro]);
 
-                            let coordsLeaflet = el.geometry.map(pt => [pt.lat, pt.lon]);
-                            const linhaNoMapa = L.polyline(coordsLeaflet, { color: "#ff2222", weight: 5, opacity: 0.85 }).addTo(camadasBusca);
-                            boundsGeral.extend(linhaNoMapa.getBounds());
+                    let pontoTurf = turf.point([lonCentro, latCentro]);
 
-                            if (dadosUbs) {
-                                turf.featureEach(dadosUbs, function (ubsPoligono) {
-                                    if (turf.booleanIntersects(featureElemento, ubsPoligono)) {
-                                        let nomeUbs = ubsPoligono.properties.UBS;
-                                        if (!ubsNomes.has(nomeUbs)) {
-                                            ubsNomes.add(nomeUbs);
-                                            ubsEncontradasFeatures.push(ubsPoligono);
-                                        }
-                                    }
-                                });
+                    if (dadosUbs) {
+                        turf.featureEach(dadosUbs, function (ubsPoligono) {
+                            if (turf.booleanPointInPolygon(pontoTurf, ubsPoligono)) {
+                                let nomeUbs = ubsPoligono.properties.UBS;
+                                if (!ubsNomes.has(nomeUbs)) {
+                                    ubsNomes.add(nomeUbs);
+                                    ubsEncontradasFeatures.push(ubsPoligono);
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 } else {
-                    // FALLBACK: Caso a Overpass API falhe, usa o processamento padrão via Nominatim limitado
-                    let alvosGeograficos = resultados.filter(r => r.name === nomeOficial).slice(0, 50);
-                    if (alvosGeograficos.length === 0) alvosGeograficos = [resultados[0]];
+                    // Executa a lógica de cruzamento por segmentos de linha (Rua Inteira)
+                    if (overpassData && overpassData.elements && overpassData.elements.length > 0) {
+                        overpassData.elements.forEach(el => {
+                            if (el.geometry && el.geometry.length > 1) {
+                                let coordsTurf = el.geometry.map(pt => [pt.lon, pt.lat]);
+                                let featureElemento = turf.lineString(coordsTurf);
 
-                    alvosGeograficos.forEach(alvo => {
-                        if (alvo.geojson) {
-                            const featureElemento = turf.feature(alvo.geojson);
-                            const linhaNoMapa = L.geoJSON(alvo.geojson, {
-                                style: { color: "#ff2222", weight: 5, opacity: 0.85 }
-                            }).addTo(camadasBusca);
-                            boundsGeral.extend(linhaNoMapa.getBounds());
+                                let coordsLeaflet = el.geometry.map(pt => [pt.lat, pt.lon]);
+                                const linhaNoMapa = L.polyline(coordsLeaflet, { color: "#ff2222", weight: 5, opacity: 0.85 }).addTo(camadasBusca);
+                                boundsGeral.extend(linhaNoMapa.getBounds());
 
-                            if (dadosUbs) {
-                                turf.featureEach(dadosUbs, function (ubsPoligono) {
-                                    if (turf.booleanIntersects(featureElemento, ubsPoligono)) {
-                                        let nomeUbs = ubsPoligono.properties.UBS;
-                                        if (!ubsNomes.has(nomeUbs)) {
-                                            ubsNomes.add(nomeUbs);
-                                            ubsEncontradasFeatures.push(ubsPoligono);
+                                if (dadosUbs) {
+                                    turf.featureEach(dadosUbs, function (ubsPoligono) {
+                                        if (turf.booleanIntersects(featureElemento, ubsPoligono)) {
+                                            let nomeUbs = ubsPoligono.properties.UBS;
+                                            if (!ubsNomes.has(nomeUbs)) {
+                                                ubsNomes.add(nomeUbs);
+                                                ubsEncontradasFeatures.push(ubsPoligono);
+                                            }
                                         }
-                                    }
-                                });
+                                    });
+                                }
                             }
-                        }
-                    });
+                        });
+                    } else {
+                        // Fallback Nominatim tradicional
+                        let alvosGeograficos = resultados.filter(r => r.name === nomeOficial).slice(0, 50);
+                        if (alvosGeograficos.length === 0) alvosGeograficos = [resultados[0]];
+
+                        alvosGeograficos.forEach(alvo => {
+                            if (alvo.geojson) {
+                                const featureElemento = turf.feature(alvo.geojson);
+                                const linhaNoMapa = L.geoJSON(alvo.geojson, {
+                                    style: { color: "#ff2222", weight: 5, opacity: 0.85 }
+                                }).addTo(camadasBusca);
+                                boundsGeral.extend(linhaNoMapa.getBounds());
+
+                                if (dadosUbs) {
+                                    turf.featureEach(dadosUbs, function (ubsPoligono) {
+                                        if (turf.booleanIntersects(featureElemento, ubsPoligono)) {
+                                            let nomeUbs = ubsPoligono.properties.UBS;
+                                            if (!ubsNomes.has(nomeUbs)) {
+                                                ubsNomes.add(nomeUbs);
+                                                ubsEncontradasFeatures.push(ubsPoligono);
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
                 }
 
-                // Renderiza os polígonos das UBS encontradas
+                // Exibe os polígonos mapeados e os resultados em formato de texto
                 if (ubsEncontradasFeatures.length > 0) {
-                    let htmlResultado = `Logradouro identificado! Cruza a área de abrangência de <b>${ubsEncontradasFeatures.length}</b> UBS(s):<br><br>`;
+                    let htmlResultado = "";
+                    if (temNumero) {
+                        htmlResultado = `📍 <b>Numeração identificada com precisão!</b><br>Este endereço pertence exclusivamente à área de atendimento da:<br><br>`;
+                    } else {
+                        htmlResultado = `Logradouro identificado! Cruza a área de abrangência de <b>${ubsEncontradasFeatures.length}</b> UBS(s):<br><br>`;
+                    }
                     
                     ubsEncontradasFeatures.forEach(feature => {
                         let nomeUbs = feature.properties.UBS;
@@ -297,15 +331,21 @@
                         } catch (e) {}
                     });
 
-                    if (ubsEncontradasFeatures.length > 1) {
+                    if (!temNumero && ubsEncontradasFeatures.length > 1) {
                          htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via cruza múltiplas regiões. Para saber a UBS exata, inclua a numeração no momento da busca no futuro.</i></small>`;
                     }
 
                     mostrarResultado(htmlResultado, "sucesso");
-                    map.fitBounds(boundsGeral, { padding: [30, 30] }); 
+                    
+                    // Zoom dinâmico inteligente baseado no tipo de entrada
+                    if (temNumero) {
+                        map.setView([latCentro, lonCentro], 16);
+                    } else {
+                        map.fitBounds(boundsGeral, { padding: [30, 30] }); 
+                    }
 
                 } else {
-                    mostrarResultado("Logradouro localizado, mas fora das áreas de UBS cadastradas.", "erro");
+                    mostrarResultado("Endereço localizado, mas não intercepta nenhuma área de UBS cadastrada.", "erro");
                     if (boundsGeral.isValid()) {
                         map.fitBounds(boundsGeral, { padding: [30, 30] });
                     } else {
@@ -321,7 +361,7 @@
 
     function mostrarResultado(mensagem, tipo) {
         const divResultado = document.getElementById('resultado');
-        divResultado.innerHTML = mensagem;
+        divResultado.innerHTML = message = mensagem;
         divResultado.style.display = 'block';
         divResultado.className = tipo;
     }
