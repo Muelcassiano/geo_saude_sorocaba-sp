@@ -77,6 +77,7 @@
             font-weight: 600; 
             line-height: 1.5;
             display: none; 
+            word-wrap: break-word;
         }
         
         .sucesso { background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
@@ -112,7 +113,7 @@
 
 <div class="container">
     <h2>Descubra sua UBS - Sorocaba</h2>
-    <p>Digite seu logradouro (Ex: Avenida Doutor Americo Figueiredo):</p>
+    <p>Digite seu logradouro (Ex: Avenida Itavuvu):</p>
     
     <div class="busca-box">
         <input type="text" id="endereco" placeholder="Rua, avenida, Sorocaba - SP">
@@ -153,11 +154,11 @@
     // Carrega a base de dados GeoJSON
     fetch('abrangencia_ubs_sorocaba.json')
         .then(response => {
-            if (!response.ok) throw new Error("Falha ao carregar o arquivo.");
+            if (!response.ok) throw new Error("Falha ao carregar o arquivo abrangencia_ubs_sorocaba.json.");
             return response.json();
         })
         .then(data => { dadosUbs = data; })
-        .catch(error => mostrarResultado("Erro ao carregar banco de dados das UBS.", "erro"));
+        .catch(error => mostrarResultado("Erro ao carregar banco de dados das UBS. Verifique se o arquivo JSON está na mesma pasta.", "erro"));
 
     function buscarEndereco() {
         let enderecoDigitado = document.getElementById('endereco').value.trim();
@@ -169,20 +170,17 @@
         const buscaFinal = enderecoDigitado.toLowerCase().includes("sorocaba") ? enderecoDigitado : `${enderecoDigitado}, Sorocaba, SP`;
         mostrarResultado("Analisando malha viária e conectando trechos...", "info");
 
-        // SOLUÇÃO: Limit=15. Rápido o suficiente para o OSM não travar, 
-        // e amostras suficientes para nosso Gap Filler interligar a avenida.
-        const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaFinal)}&limit=15&polygon_geojson=1`;
+        // SOLUÇÃO: URL Refatorada sem Headers de fetch.
+        // Adicionado email para identificação e polygon_threshold para resposta imediata.
+        const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaFinal)}&limit=30&polygon_geojson=1&polygon_threshold=0.001&accept-language=pt-BR&email=geosaude.sorocaba.app@gmail.com`;
 
-        fetch(urlGeocode, {
-            // Cabecalho sugerido pelas boas práticas do OSM
-            headers: { 'Accept-Language': 'pt-BR' }
-        })
+        fetch(urlGeocode)
             .then(response => {
-                if (!response.ok) throw new Error("Erro de comunicação com o servidor de mapas.");
+                if (!response.ok) throw new Error(`Erro do servidor de mapas: ${response.status}`);
                 return response.json();
             })
             .then(resultados => {
-                if (resultados.length === 0) throw new Error("Logradouro não encontrado. Tente verificar a grafia.");
+                if (resultados.length === 0) throw new Error("Logradouro não encontrado na base de dados. Tente verificar a grafia.");
 
                 camadasBusca.clearLayers();
                 camadasPoligonos.clearLayers();
@@ -234,16 +232,22 @@
                         }
                     }
 
-                    if (centroidesOrdenados.length > 1) {
-                        let coordenadasLinhaGuia = centroidesOrdenados.map(c => c.geometry.coordinates);
-                        linhaGuiaContinua = turf.lineString(coordenadasLinhaGuia);
-                        
-                        // Opcional: Desenhar a linha guia no mapa em azul bem fraco para debug visual
-                        /*
-                        L.geoJSON(linhaGuiaContinua, {
-                            style: { color: "#3b82f6", weight: 3, dashArray: "5, 10", opacity: 0.5 }
-                        }).addTo(camadasBusca);
-                        */
+                    // Limpa coordenadas duplicadas para evitar erro no Turf.js
+                    let coordenadasLimpass = [];
+                    centroidesOrdenados.forEach(c => {
+                        let coords = c.geometry.coordinates;
+                        if(coordenadasLimpass.length === 0) {
+                            coordenadasLimpass.push(coords);
+                        } else {
+                            let ult = coordenadasLimpass[coordenadasLimpass.length - 1];
+                            if(ult[0] !== coords[0] || ult[1] !== coords[1]) {
+                                coordenadasLimpass.push(coords);
+                            }
+                        }
+                    });
+
+                    if (coordenadasLimpass.length > 1) {
+                        linhaGuiaContinua = turf.lineString(coordenadasLimpass);
                     }
                 } catch (err) {
                     console.warn("Aviso: Não foi possível computar a linha guia de preenchimento.", err);
@@ -263,20 +267,22 @@
                     
                     boundsGeral.extend(linhaNoMapa.getBounds());
 
-                    // Verifica as intersecções (seja pelo pedaço da via, seja pela nossa linha guia que liga os buracos)
-                    turf.featureEach(dadosUbs, function (ubsPoligono) {
-                        let cruzaSegmentoReal = turf.booleanIntersects(featureElemento, ubsPoligono);
-                        let cruzaLinhaGuia = linhaGuiaContinua ? turf.booleanIntersects(linhaGuiaContinua, ubsPoligono) : false;
+                    // Verifica as intersecções (pelo pedaço da via OU pela linha guia invisível)
+                    if (dadosUbs) {
+                        turf.featureEach(dadosUbs, function (ubsPoligono) {
+                            let cruzaSegmentoReal = turf.booleanIntersects(featureElemento, ubsPoligono);
+                            let cruzaLinhaGuia = linhaGuiaContinua ? turf.booleanIntersects(linhaGuiaContinua, ubsPoligono) : false;
 
-                        if (cruzaSegmentoReal || cruzaLinhaGuia) {
-                            let nomeUbs = ubsPoligono.properties.UBS;
-                            
-                            if (!ubsNomes.has(nomeUbs)) {
-                                ubsNomes.add(nomeUbs);
-                                ubsEncontradasFeatures.push(ubsPoligono);
+                            if (cruzaSegmentoReal || cruzaLinhaGuia) {
+                                let nomeUbs = ubsPoligono.properties.UBS;
+                                
+                                if (!ubsNomes.has(nomeUbs)) {
+                                    ubsNomes.add(nomeUbs);
+                                    ubsEncontradasFeatures.push(ubsPoligono);
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 });
 
                 if (ubsEncontradasFeatures.length > 0) {
@@ -309,7 +315,7 @@
                     });
 
                     if (ubsEncontradasFeatures.length > 1) {
-                         htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via cruza múltiplas regiões de saúde. Para um direcionamento preciso, avalie a numeração do imóvel.</i></small>`;
+                         htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via cruza múltiplas regiões. Para saber a UBS exata, inclua a numeração no momento da busca no futuro.</i></small>`;
                     }
 
                     mostrarResultado(htmlResultado, "sucesso");
@@ -321,7 +327,7 @@
                 }
             })
             .catch(error => {
-                mostrarResultado("Ops! Falha na rede ou limite de busca atingido no mapa. Tente novamente.", "erro");
+                mostrarResultado(`Ops! Ocorreu um erro: ${error.message}`, "erro");
                 console.error(error);
             });
     }
