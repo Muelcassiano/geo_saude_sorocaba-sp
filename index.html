@@ -83,7 +83,6 @@
         .erro { background-color: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
         .info { background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
 
-        /* Estilo do Rótulo do QGIS (Texto com Halo/Contorno Branco) */
         .rotulo-ubs {
             background: none;
             border: none;
@@ -140,7 +139,7 @@
         if (!map) {
             map = L.map('map').setView([lat, lon], zoom);
             
-            // ALTERAÇÃO: Utilizando a camada CartoDB Positron (Premium Light, estilo Google Maps)
+            // Camada CartoDB Positron (Premium Light)
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '© OpenStreetMap contributors © CARTODB'
             }).addTo(map);
@@ -148,7 +147,6 @@
             camadasBusca.addTo(map);
             camadasPoligonos.addTo(map);
         }
-        // Força o Leaflet a recalcular o tamanho da tela caso mude a orientação do celular
         setTimeout(() => { map.invalidateSize(); }, 200);
     }
 
@@ -169,15 +167,22 @@
         }
 
         const buscaFinal = enderecoDigitado.toLowerCase().includes("sorocaba") ? enderecoDigitado : `${enderecoDigitado}, Sorocaba, SP`;
-        mostrarResultado("Analisando malha viária e corrigindo lacunas...", "info");
+        mostrarResultado("Analisando malha viária e conectando trechos...", "info");
 
-        // EVOLUÇÃO: Aumentado o limite para 50 para abranger avenidas completas de ponta a ponta
-        const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaFinal)}&limit=50&polygon_geojson=1`;
+        // SOLUÇÃO: Limit=15. Rápido o suficiente para o OSM não travar, 
+        // e amostras suficientes para nosso Gap Filler interligar a avenida.
+        const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaFinal)}&limit=15&polygon_geojson=1`;
 
-        fetch(urlGeocode)
-            .then(response => response.json())
+        fetch(urlGeocode, {
+            // Cabecalho sugerido pelas boas práticas do OSM
+            headers: { 'Accept-Language': 'pt-BR' }
+        })
+            .then(response => {
+                if (!response.ok) throw new Error("Erro de comunicação com o servidor de mapas.");
+                return response.json();
+            })
             .then(resultados => {
-                if (resultados.length === 0) throw new Error("Logradouro não encontrado.");
+                if (resultados.length === 0) throw new Error("Logradouro não encontrado. Tente verificar a grafia.");
 
                 camadasBusca.clearLayers();
                 camadasPoligonos.clearLayers();
@@ -199,7 +204,7 @@
                 let boundsGeral = L.latLngBounds();
                 
                 // --------------------------------------------------------------------------------
-                // ALGORITMO EXCLUSIVO: CONSTRUÇÃO DA LINHA GUIA INVISÍVEL (GAP FILLER)
+                // GAP FILLER: Conecta os pontos da rua para resolver as lacunas (Linha Guia)
                 // --------------------------------------------------------------------------------
                 let linhaGuiaContinua = null;
                 try {
@@ -208,7 +213,6 @@
                         return turf.centroid(feat);
                     });
 
-                    // Ordenação por proximidade (Nearest Neighbor) para ligar os pontos sequencialmente
                     let centroidesOrdenados = [];
                     if (centroides.length > 0) {
                         let restantes = [...centroides];
@@ -233,17 +237,25 @@
                     if (centroidesOrdenados.length > 1) {
                         let coordenadasLinhaGuia = centroidesOrdenados.map(c => c.geometry.coordinates);
                         linhaGuiaContinua = turf.lineString(coordenadasLinhaGuia);
+                        
+                        // Opcional: Desenhar a linha guia no mapa em azul bem fraco para debug visual
+                        /*
+                        L.geoJSON(linhaGuiaContinua, {
+                            style: { color: "#3b82f6", weight: 3, dashArray: "5, 10", opacity: 0.5 }
+                        }).addTo(camadasBusca);
+                        */
                     }
                 } catch (err) {
                     console.warn("Aviso: Não foi possível computar a linha guia de preenchimento.", err);
                 }
                 // --------------------------------------------------------------------------------
 
-                // Itera sobre os segmentos reais e plota na tela
+                // Itera sobre os segmentos que vieram da API
                 alvosGeograficos.forEach(alvo => {
                     const formatoGeoJson = alvo.geojson;
                     const featureElemento = turf.feature(formatoGeoJson);
 
+                    // Desenha o que existe de fato no mapa (Vermelho)
                     const linhaNoMapa = L.geoJSON(formatoGeoJson, {
                         style: { color: "#ff2222", weight: 5, opacity: 0.85 },
                         pointToLayer: (feature, latlng) => L.marker(latlng)
@@ -251,12 +263,11 @@
                     
                     boundsGeral.extend(linhaNoMapa.getBounds());
 
-                    // Varre as UBSs checando intersecção tanto no segmento real quanto na linha guia contínua
+                    // Verifica as intersecções (seja pelo pedaço da via, seja pela nossa linha guia que liga os buracos)
                     turf.featureEach(dadosUbs, function (ubsPoligono) {
                         let cruzaSegmentoReal = turf.booleanIntersects(featureElemento, ubsPoligono);
                         let cruzaLinhaGuia = linhaGuiaContinua ? turf.booleanIntersects(linhaGuiaContinua, ubsPoligono) : false;
 
-                        // Se cruzar a linha real OU passar pelo buraco remendado pela linha guia:
                         if (cruzaSegmentoReal || cruzaLinhaGuia) {
                             let nomeUbs = ubsPoligono.properties.UBS;
                             
@@ -268,7 +279,6 @@
                     });
                 });
 
-                // Plota os polígonos das UBSs encontradas
                 if (ubsEncontradasFeatures.length > 0) {
                     let htmlResultado = `Logradouro identificado! Cruza a área de abrangência de <b>${ubsEncontradasFeatures.length}</b> UBS(s):<br><br>`;
                     
@@ -282,7 +292,6 @@
                         
                         boundsGeral.extend(poliLayer.getBounds());
 
-                        // Renderiza o rótulo centralizado (Estilo QGIS)
                         try {
                             let centro = turf.centerOfMass(feature);
                             let coords = centro.geometry.coordinates;
@@ -296,13 +305,11 @@
                                 }),
                                 interactive: false
                             }).addTo(camadasPoligonos);
-                        } catch (e) {
-                            console.warn("Erro ao gerar rótulo da UBS:", nomeUbs);
-                        }
+                        } catch (e) {}
                     });
 
                     if (ubsEncontradasFeatures.length > 1) {
-                         htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via cruza múltiplas regiões de saúde. Para um direcionamento preciso, avalie a numeração do imóvel ao longo do traçado mapeado.</i></small>`;
+                         htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via cruza múltiplas regiões de saúde. Para um direcionamento preciso, avalie a numeração do imóvel.</i></small>`;
                     }
 
                     mostrarResultado(htmlResultado, "sucesso");
@@ -313,7 +320,10 @@
                     map.fitBounds(boundsGeral, { padding: [30, 30] });
                 }
             })
-            .catch(error => mostrarResultado(error.message, "erro"));
+            .catch(error => {
+                mostrarResultado("Ops! Falha na rede ou limite de busca atingido no mapa. Tente novamente.", "erro");
+                console.error(error);
+            });
     }
 
     function mostrarResultado(mensagem, tipo) {
