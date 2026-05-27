@@ -140,9 +140,9 @@
         if (!map) {
             map = L.map('map').setView([lat, lon], zoom);
             
-            // Camada CartoDB Positron (Premium Light)
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                attribution: '© OpenStreetMap contributors © CARTODB'
+            // CORREÇÃO: Voltando para o estilo clássico e colorido do OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
             }).addTo(map);
             
             camadasBusca.addTo(map);
@@ -170,9 +170,8 @@
         const buscaFinal = enderecoDigitado.toLowerCase().includes("sorocaba") ? enderecoDigitado : `${enderecoDigitado}, Sorocaba, SP`;
         mostrarResultado("Analisando malha viária e conectando trechos...", "info");
 
-        // SOLUÇÃO: URL Refatorada sem Headers de fetch.
-        // Adicionado email para identificação e polygon_threshold para resposta imediata.
-        const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaFinal)}&limit=30&polygon_geojson=1&polygon_threshold=0.001&accept-language=pt-BR&email=geosaude.sorocaba.app@gmail.com`;
+        // CORREÇÃO: Aumentado o limit para 100 para capturar os segmentos de ponta a ponta da avenida
+        const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaFinal)}&limit=100&polygon_geojson=1&polygon_threshold=0.001&accept-language=pt-BR&email=geosaude.sorocaba.app@gmail.com`;
 
         fetch(urlGeocode)
             .then(response => {
@@ -233,21 +232,21 @@
                     }
 
                     // Limpa coordenadas duplicadas para evitar erro no Turf.js
-                    let coordenadasLimpass = [];
+                    let coordenadasLimpas = [];
                     centroidesOrdenados.forEach(c => {
                         let coords = c.geometry.coordinates;
-                        if(coordenadasLimpass.length === 0) {
-                            coordenadasLimpass.push(coords);
+                        if(coordenadasLimpas.length === 0) {
+                            coordenadasLimpas.push(coords);
                         } else {
-                            let ult = coordenadasLimpass[coordenadasLimpass.length - 1];
+                            let ult = coordenadasLimpas[coordenadasLimpas.length - 1];
                             if(ult[0] !== coords[0] || ult[1] !== coords[1]) {
-                                coordenadasLimpass.push(coords);
+                                coordenadasLimpas.push(coords);
                             }
                         }
                     });
 
-                    if (coordenadasLimpass.length > 1) {
-                        linhaGuiaContinua = turf.lineString(coordenadasLimpass);
+                    if (coordenadasLimpas.length > 1) {
+                        linhaGuiaContinua = turf.lineString(coordenadasLimpas);
                     }
                 } catch (err) {
                     console.warn("Aviso: Não foi possível computar a linha guia de preenchimento.", err);
@@ -334,7 +333,7 @@
 
     function mostrarResultado(mensagem, tipo) {
         const divResultado = document.getElementById('resultado');
-        divResultado.innerHTML = mensagem;
+        divResultado.innerHTML = message = mensagem;
         divResultado.style.display = 'block';
         divResultado.className = tipo;
     }
