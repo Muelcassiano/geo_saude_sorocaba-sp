@@ -155,46 +155,39 @@
         .then(data => { dadosUbs = data; })
         .catch(error => mostrarResultado("Erro ao carregar banco de dados das UBS. Verifique se o arquivo JSON está na mesma pasta.", "erro"));
 
-    // Função auxiliar para estruturar a caixinha de popup do mapa de forma padronizada
     function formatarPopupInfo(resultadoItem) {
         let displayName = resultadoItem.display_name;
         let road = resultadoItem.address ? (resultadoItem.address.road || resultadoItem.address.pedestrian || resultadoItem.address.square) : null;
         
         if (road) {
-            // Remove o nome da rua do meio do texto original (se existir) para evitar duplicidade
             let regexRoad = new RegExp(road + "([, -]*)", 'i');
             displayName = displayName.replace(regexRoad, '');
-            // Força o Tipo e Nome da rua em Negrito sempre na primeira linha/posição
             displayName = `<b>${road}</b>, ${displayName}`;
-            // Limpeza de possíveis vírgulas que sobraram no começo
             displayName = displayName.replace(/^,\s*/, '');
         }
         return `<b>Localização Encontrada:</b><br>${displayName}`;
     }
 
-    // Função avançada para medir os metros de uma via dentro de um polígono
     function calcularExtensaoDentro(linhaString, poligono) {
         let comprimentoDentro = 0;
-        let linhas = [];
+        let lines = [];
         
         if (linhaString.geometry.type === "LineString") {
-            linhas.push(linhaString);
+            lines.push(linhaString);
         } else if (linhaString.geometry.type === "MultiLineString") {
             linhaString.geometry.coordinates.forEach(coords => {
-                linhas.push(turf.lineString(coords));
+                lines.push(turf.lineString(coords));
             });
         } else { 
-            return 999; // Se não for linha, aprova direto
+            return 999;
         }
 
-        linhas.forEach(linha => {
-            // Divide a via em "fatias" de 5 metros para medição exata
+        lines.forEach(linha => {
             let pedacos = turf.lineChunk(linha, 0.005, {units: 'kilometers'});
             turf.featureEach(pedacos, function(pedaco) {
                 let tamanhoFragmento = turf.length(pedaco, {units: 'kilometers'});
                 let pontoCentralDoFragmento = turf.along(pedaco, tamanhoFragmento / 2, {units: 'kilometers'});
                 
-                // Se o meio do segmento de 5m estiver dentro do polígono, somamos essa metragem
                 if (turf.booleanPointInPolygon(pontoCentralDoFragmento, poligono)) {
                     comprimentoDentro += tamanhoFragmento * 1000;
                 }
@@ -204,6 +197,7 @@
         return comprimentoDentro;
     }
 
+    // Entrada unificada: Valida se é CEP e faz o redirecionamento estratégico
     function buscarEndereco() {
         let enderecoDigitado = document.getElementById('endereco').value.trim();
         if (!enderecoDigitado) {
@@ -211,11 +205,39 @@
             return;
         }
 
-        // Filtra possíveis CEPs para não confundir com o número do imóvel
-        const textoSemCep = enderecoDigitado.replace(/\b\d{8}\b|\b\d{5}-?\d{3}\b/g, "").trim();
-        const temNumero = /\d+/.test(textoSemCep); // Só é modo ponto se tiver algum número ALÉM do CEP
+        // Verifica se o termo pesquisado se trata exclusivamente de um CEP
+        const cepLimpo = enderecoDigitado.replace(/\D/g, '');
+        const ehApenasCep = (cepLimpo.length === 8);
+
+        if (ehApenasCep) {
+            mostrarResultado("Buscando logradouro correspondente ao CEP informado...", "info");
+            
+            // Consulta o ViaCEP para traduzir o número em nome de rua
+            fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.erro || !data.logradouro) {
+                        throw new Error("Logradouro não encontrado para este CEP. Tentando busca direta...");
+                    }
+                    // Sucesso: Executa a busca usando o nome da rua retornado
+                    executarBuscaGeografica(data.logradouro);
+                })
+                .catch(err => {
+                    // Fallback: Se a API falhar ou não achar a rua, tenta o fluxo normal com o termo original
+                    executarBuscaGeografica(enderecoDigitado);
+                });
+        } else {
+            // Se já for texto ou possuir número residencial, segue direto
+            executarBuscaGeografica(enderecoDigitado);
+        }
+    }
+
+    // Fluxo principal de renderização e análise espacial (herdado e preservado)
+    function executarBuscaGeografica(termoBusca) {
+        const textoSemCep = termoBusca.replace(/\b\d{8}\b|\b\d{5}-?\d{3}\b/g, "").trim();
+        const temNumero = /\d+/.test(textoSemCep); 
         
-        const buscaFinal = enderecoDigitado.toLowerCase().includes("sorocaba") ? enderecoDigitado : `${enderecoDigitado}, Sorocaba, SP`;
+        const buscaFinal = termoBusca.toLowerCase().includes("sorocaba") ? termoBusca : `${termoBusca}, Sorocaba, SP`;
 
         if (temNumero) {
             mostrarResultado("Localizando número exato e identificando sua UBS correspondente...", "info");
@@ -223,7 +245,6 @@
             mostrarResultado("Mapeando malha viária completa e delimitando intersecções...", "info");
         }
 
-        // Adicionado addressdetails=1 para garantir a formatação correta do Logradouro no popup
         const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(buscaFinal)}&limit=5&accept-language=pt-BR&email=geosaude.sorocaba.app@gmail.com`;
 
         fetch(urlGeocode)
@@ -242,7 +263,6 @@
                 } else {
                     let viasEncontradas = resultados.filter(r => r.class === 'highway' || r.type === 'residential');
                     
-                    // Estratégia de captura do nome oficial da rua independente de ser nome digitado ou CEP
                     let nomeOficial = "";
                     if (viasEncontradas.length > 0 && viasEncontradas[0].address && viasEncontradas[0].address.road) {
                         nomeOficial = viasEncontradas[0].address.road;
@@ -276,7 +296,6 @@
                 let ubsNomes = new Set();
                 let boundsGeral = L.latLngBounds();
 
-                // Define e plota a caixinha de informações estruturada
                 const popupHtmlText = formatarPopupInfo(resultados[0]);
                 L.marker([latCentro, lonCentro]).addTo(camadasBusca)
                     .bindPopup(popupHtmlText)
@@ -313,12 +332,10 @@
 
                                 if (dadosUbs) {
                                     turf.featureEach(dadosUbs, function (ubsPoligono) {
-                                        // Filtro Inteligente: Verifica intersecção e aplica regra de > 15 metros
                                         if (turf.booleanIntersects(featureElemento, ubsPoligono)) {
                                             let extensaoTotalDaVia = turf.length(featureElemento, {units: 'kilometers'}) * 1000;
                                             let extensaoInterna = calcularExtensaoDentro(featureElemento, ubsPoligono);
                                             
-                                            // Descarta caso a via invada menos de 15m, desde que a via não seja uma via minúscula de 15m
                                             if (extensaoInterna < 15 && extensaoTotalDaVia > 15) {
                                                 console.log("Via descartada por intersecção inferior a 15 metros na UBS", ubsPoligono.properties.UBS);
                                                 return; 
@@ -336,7 +353,6 @@
                         });
                     }
                     
-                    // Fallback Nominatim, caso Overpass falhe em reconstruir o traçado
                     if (!logradouroEncontradoNoOverpass) {
                         let alvosGeograficos = resultados.filter(r => r.name === nomeOficial).slice(0, 50);
                         if (alvosGeograficos.length === 0) alvosGeograficos = [resultados[0]];
@@ -352,7 +368,6 @@
                                 if (dadosUbs) {
                                     turf.featureEach(dadosUbs, function (ubsPoligono) {
                                         if (turf.booleanIntersects(featureElemento, ubsPoligono)) {
-                                            // Verifica os 15 metros também no Fallback
                                             let extensaoTotalDaVia = 999;
                                             if(featureElemento.geometry.type.includes("Line")) {
                                                 extensaoTotalDaVia = turf.length(featureElemento, {units: 'kilometers'}) * 1000;
@@ -437,7 +452,7 @@
 
     function mostrarResultado(mensagem, tipo) {
         const divResultado = document.getElementById('resultado');
-        divResultado.innerHTML = message = mensagem;
+        divResultado.innerHTML = mensagem;
         divResultado.style.display = 'block';
         divResultado.className = tipo;
     }
