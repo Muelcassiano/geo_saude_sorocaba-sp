@@ -97,6 +97,38 @@
                 0px -1px 0 #FFF, 0px 1px 0 #FFF;
         }
 
+        /* Classes para a interação e Modal da UBS */
+        .ubs-item { margin-bottom: 8px; }
+        .ubs-clickable {
+            cursor: pointer;
+            text-decoration: underline;
+            color: #065f46;
+            transition: color 0.2s;
+        }
+        .ubs-clickable:hover { color: #047857; }
+        
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); z-index: 2000;
+            display: none; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: #fff; padding: 25px; border-radius: 10px;
+            width: 90%; max-width: 450px; position: relative;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            color: #333; font-weight: normal; line-height: 1.6;
+        }
+        .modal-close {
+            position: absolute; top: 12px; right: 18px;
+            cursor: pointer; font-size: 22px; font-weight: bold; color: #94a3b8;
+            transition: color 0.2s;
+        }
+        .modal-close:hover { color: #ef4444; }
+        .modal-titulo { font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 10px; margin-top: 0;}
+        .modal-endereco { margin-bottom: 15px; }
+        .modal-horario { font-size: 15px; }
+
         @media (max-width: 600px) {
             body { padding: 10px; }
             .container { padding: 15px; }
@@ -121,6 +153,15 @@
     <div id="map"></div>
 </div>
 
+<div id="modal-ubs" class="modal-overlay" onclick="fecharModalFora(event)">
+    <div class="modal-content">
+        <span class="modal-close" onclick="fecharPopupUbs()">×</span>
+        <h3 id="modal-titulo" class="modal-titulo"></h3>
+        <div id="modal-endereco" class="modal-endereco"></div>
+        <div id="modal-horario" class="modal-horario"></div>
+    </div>
+</div>
+
 <script>
     let dadosUbs = null;
     let map = null;
@@ -131,6 +172,62 @@
         if (e.key === 'Enter') { buscarEndereco(); }
     });
 
+    // Funções de tratamento de texto para o Modal
+    function formatarEndereco(endStr) {
+        if (!endStr) return "Endereço não disponível";
+        let partes = endStr.split(",");
+        
+        // Remove acentos, passa para maiúsculo e adiciona negrito apenas no logradouro
+        let logradouroSemAcento = partes[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        partes[0] = `<b>${logradouroSemAcento}</b>`;
+        
+        return partes.join(",");
+    }
+
+    function formatarHorario(horStr) {
+        if (!horStr) return "Horário não informado";
+        
+        // Regra para unidades mistas (UBS e PA)
+        if (horStr.includes("PA -") && horStr.includes("UBS -")) {
+            let partes = horStr.split("PA -");
+            let ubsParte = partes[0].replace("UBS -", "").trim();
+            let paParte = partes[1].trim();
+
+            return `Horários Seg. à Sex:<br>
+                    UBS - das ${ubsParte}<br>
+                    PA - das ${paParte}<br><br>
+                    Finais de Semana e Feriados:<br>
+                    Urgência (PA) - das ${paParte}`;
+        } else {
+            // Regra padrão
+            let horaLimpa = horStr.trim();
+            if (!horaLimpa.toLowerCase().startsWith("das ")) {
+                horaLimpa = "das " + horaLimpa;
+            }
+            return `Horários Seg. à Sex: ${horaLimpa}`;
+        }
+    }
+
+    // Abertura e Fechamento do Modal
+    function abrirPopupUbs(nome, endereco, horario) {
+        document.getElementById('modal-titulo').innerText = `UBS ${nome}:`;
+        document.getElementById('modal-endereco').innerHTML = formatarEndereco(endereco);
+        document.getElementById('modal-horario').innerHTML = formatarHorario(horario);
+        
+        document.getElementById('modal-ubs').style.display = 'flex';
+    }
+
+    function fecharPopupUbs() {
+        document.getElementById('modal-ubs').style.display = 'none';
+    }
+
+    function fecharModalFora(event) {
+        if (event.target === document.getElementById('modal-ubs')) {
+            fecharPopupUbs();
+        }
+    }
+
+    // Inicialização do Mapa
     function initMap(lat, lon, zoom = 13) {
         const mapDiv = document.getElementById('map');
         mapDiv.style.display = 'block';
@@ -147,6 +244,7 @@
         setTimeout(() => { map.invalidateSize(); }, 200);
     }
 
+    // Carregamento do JSON
     fetch('abrangencia_ubs_sorocaba.json')
         .then(response => {
             if (!response.ok) throw new Error("Falha ao carregar o arquivo abrangencia_ubs_sorocaba.json.");
@@ -197,7 +295,6 @@
         return comprimentoDentro;
     }
 
-    // Entrada unificada: Valida se é CEP e faz o redirecionamento estratégico
     function buscarEndereco() {
         let enderecoDigitado = document.getElementById('endereco').value.trim();
         if (!enderecoDigitado) {
@@ -205,34 +302,28 @@
             return;
         }
 
-        // Verifica se o termo pesquisado se trata exclusivamente de um CEP
         const cepLimpo = enderecoDigitado.replace(/\D/g, '');
         const ehApenasCep = (cepLimpo.length === 8);
 
         if (ehApenasCep) {
             mostrarResultado("Buscando logradouro correspondente ao CEP informado...", "info");
             
-            // Consulta o ViaCEP para traduzir o número em nome de rua
             fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.erro || !data.logradouro) {
                         throw new Error("Logradouro não encontrado para este CEP. Tentando busca direta...");
                     }
-                    // Sucesso: Executa a busca usando o nome da rua retornado
                     executarBuscaGeografica(data.logradouro);
                 })
                 .catch(err => {
-                    // Fallback: Se a API falhar ou não achar a rua, tenta o fluxo normal com o termo original
                     executarBuscaGeografica(enderecoDigitado);
                 });
         } else {
-            // Se já for texto ou possuir número residencial, segue direto
             executarBuscaGeografica(enderecoDigitado);
         }
     }
 
-    // Fluxo principal de renderização e análise espacial (herdado e preservado)
     function executarBuscaGeografica(termoBusca) {
         const textoSemCep = termoBusca.replace(/\b\d{8}\b|\b\d{5}-?\d{3}\b/g, "").trim();
         const temNumero = /\d+/.test(textoSemCep); 
@@ -337,7 +428,6 @@
                                             let extensaoInterna = calcularExtensaoDentro(featureElemento, ubsPoligono);
                                             
                                             if (extensaoInterna < 15 && extensaoTotalDaVia > 15) {
-                                                console.log("Via descartada por intersecção inferior a 15 metros na UBS", ubsPoligono.properties.UBS);
                                                 return; 
                                             }
 
@@ -397,9 +487,21 @@
                         htmlResultado = `Logradouro identificado! Atravessa a área de abrangência de <b>${ubsEncontradasFeatures.length}</b> UBS(s):<br><br>`;
                     }
                     
+                    // Montagem das UBSs encontradas com os atributos solicitados
                     ubsEncontradasFeatures.forEach(feature => {
-                        let nomeUbs = feature.properties.UBS;
-                        htmlResultado += `📍 UBS ${nomeUbs}<br>`;
+                        // Limpa o nome removendo possíveis prefixos "RN" para manter consistência
+                        let nomeUbsLimpo = feature.properties.UBS ? feature.properties.UBS.replace(/^RN\s+/i, '').trim() : "Desconhecida";
+                        
+                        let codigo = feature.properties['Codigo microrregiao'] || feature.properties.codigo_microrregiao || "S/N";
+                        let endereco = feature.properties.END || "";
+                        let horario = feature.properties.Horario || "";
+
+                        // Prepara os dados escapando aspas para não quebrar a função no clique
+                        let argsCliq = `'${nomeUbsLimpo.replace(/'/g, "\\'")}', '${endereco.replace(/'/g, "\\'")}', '${horario.replace(/'/g, "\\'")}'`;
+
+                        htmlResultado += `<div class="ubs-item">
+                            📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${nomeUbsLimpo} - Cod. Microgregião (<b>${codigo}</b>)</span>
+                        </div>`;
                         
                         const poliLayer = L.geoJSON(feature, {
                             style: { color: "#10b981", weight: 2.5, fillOpacity: 0.12 }
@@ -414,7 +516,7 @@
                             L.marker([coords[1], coords[0]], {
                                 icon: L.divIcon({
                                     className: 'rotulo-ubs',
-                                    html: `<div>UBS ${nomeUbs.toUpperCase()}</div>`,
+                                    html: `<div>UBS ${nomeUbsLimpo.toUpperCase()}</div>`,
                                     iconSize: [160, 40],
                                     iconAnchor: [80, 20]
                                 }),
@@ -423,8 +525,12 @@
                         } catch (e) {}
                     });
 
+                    // Inserção da nota de rodapé dinâmica
                     if (!temNumero && ubsEncontradasFeatures.length > 1) {
-                         htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via abrange múltiplas regiões. Para saber a UBS exata, inclua o número do imóvel na próxima busca.</i></small>`;
+                        htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via abrange múltiplas regiões. Para saber a UBS exata, inclua o número do imóvel na próxima busca.</i><br>
+                        📍 Quer saber o endereço? clique ou toque no icone da sua UBS</small>`;
+                    } else {
+                        htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Quer saber o endereço? clique ou toque na sua UBS</i></small>`;
                     }
 
                     mostrarResultado(htmlResultado, "sucesso");
