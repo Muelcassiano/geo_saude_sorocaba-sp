@@ -500,7 +500,7 @@
                         let argsCliq = `'${nomeUbsLimpo.replace(/'/g, "\\'")}', '${endereco.replace(/'/g, "\\'")}', '${horario.replace(/'/g, "\\'")}'`;
 
                         htmlResultado += `<div class="ubs-item">
-                            📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${nomeUbsLimpo} - Cod. Microgregião (<b>${codigo}</b>)</span>
+                            📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${nomeUbsLimpo} - Cod. Microrregião (<b>${codigo}</b>)</span>
                         </div>`;
                         
                         const poliLayer = L.geoJSON(feature, {
