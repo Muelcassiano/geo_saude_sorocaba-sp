@@ -496,11 +496,19 @@
                         let endereco = feature.properties.END || "";
                         let horario = feature.properties.Horario || "";
 
-                        // Prepara os dados escapando aspas para não quebrar a função no clique
-                        let argsCliq = `'${nomeUbsLimpo.replace(/'/g, "\\'")}', '${endereco.replace(/'/g, "\\'")}', '${horario.replace(/'/g, "\\'")}'`;
+                        // NOVA SOLUÇÃO AQUI: Remove quebras de linha e escapa aspas duplas e simples
+                        // Isso garante que seções de texto acidentais do JSON não quebrem o HTML
+                        let endSeguro = endereco.replace(/(\r\n|\n|\r)/gm, " ");
+                        let horSeguro = horario.replace(/(\r\n|\n|\r)/gm, " ");
+
+                        let nomeArgs = nomeUbsLimpo.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        let endArgs = endSeguro.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        let horArgs = horSeguro.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+                        let argsCliq = `'${nomeArgs}', '${endArgs}', '${horArgs}'`;
 
                         htmlResultado += `<div class="ubs-item">
-                            📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${nomeUbsLimpo} - Cod. Microrregião (<b>${codigo}</b>)</span>
+                            📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${nomeUbsLimpo} - Cod. Microgregião (<b>${codigo}</b>)</span>
                         </div>`;
                         
                         const poliLayer = L.geoJSON(feature, {
