@@ -167,42 +167,20 @@
     let camadasBusca = L.layerGroup();
     let camadasPoligonos = L.layerGroup(); 
 
-    let keyEndereco = "AL_Endere?";
-    let keyNumero = "AL_Numera?";
-
     document.getElementById('endereco').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') { buscarEndereco(); }
     });
 
+    // Carregamento dos JSONs
     fetch('abrangencia_ubs_sorocaba.json')
         .then(response => response.ok ? response.json() : Promise.reject())
         .then(data => { dadosUbs = data; })
         .catch(() => mostrarResultado("Erro ao carregar banco de dados das UBS.", "erro"));
 
-    // Carregamento exato das 3 partes divididas da pasta lotes_sorocaba_pontos
-    Promise.all([
-        fetch('lotes_sorocaba_pontos/lotes_sorocaba_pontos_part01.json').then(response => response.ok ? response.json() : Promise.reject()),
-        fetch('lotes_sorocaba_pontos/lotes_sorocaba_pontos_part02.json').then(response => response.ok ? response.json() : Promise.reject()),
-        fetch('lotes_sorocaba_pontos/lotes_sorocaba_pontos_part03.json').then(response => response.ok ? response.json() : Promise.reject())
-    ])
-    .then(([part1, part2, part3]) => {
-        dadosLotes = {
-            type: "FeatureCollection",
-            name: "lotes_sorocaba_pontos",
-            crs: part1.crs || { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
-            features: [...part1.features, ...part2.features, ...part3.features]
-        };
-        console.log("Base de Lotes montada com sucesso! Total de registros: " + dadosLotes.features.length);
-        
-        if (part1.features && part1.features.length > 0) {
-            let props = part1.features[0].properties;
-            for (let k in props) {
-                if (k.startsWith("AL_Ender")) keyEndereco = k;
-                if (k.startsWith("AL_Numer")) keyNumero = k;
-            }
-        }
-    })
-    .catch(() => console.log("Aviso: Base de Lotes não encontrada ou incompleta. Usando modo de rede viária."));
+    fetch('lotes_sorocaba_pontos.json')
+        .then(response => response.ok ? response.json() : Promise.reject())
+        .then(data => { dadosLotes = data; })
+        .catch(() => console.log("Aviso: Base de Lotes não encontrada. Usando modo de rede viária."));
 
     function formatarEndereco(endStr) {
         if (!endStr) return "Endereço não disponível";
@@ -255,6 +233,7 @@
         setTimeout(() => { map.invalidateSize(); }, 200);
     }
 
+    // Geração de Popup Formatado para Nominatim
     function gerarPopupNominatim(resultadoItem, numeroBuscado) {
         let displayName = resultadoItem.display_name;
         let road = resultadoItem.address ? (resultadoItem.address.road || resultadoItem.address.pedestrian || resultadoItem.address.square || resultadoItem.address.suburb || resultadoItem.name) : null;
@@ -278,9 +257,10 @@
         return `<b>Localização Encontrada:</b><br>${displayName}`;
     }
 
+    // Geração de Popup Formatado para Base de Lotes
     function gerarPopupLote(nomeRua, numero, tipo) {
-        let tipoTexto = tipo === 'exato' ? 'Número Exato' : (tipo === 'interpolado' ? 'Posição Interpolada' : 'Aproximação Urbana');
-        let aviso = `<br><small style="color:#64748b; font-weight:normal;"><i>(Localização: ${tipoTexto} estruturada via lotes técnicos)</i></small>`;
+        let aviso = (tipo === 'interpolado' || tipo === 'aproximado') 
+            ? '<br><small style="color:#64748b; font-weight:normal;"><i>(Localização aproximada calculada via base de lotes)</i></small>' : '';
         return `<b>Localização Encontrada:</b><br><b>${nomeRua.toUpperCase()}, ${numero} -</b> Sorocaba, São Paulo, Brasil${aviso}`;
     }
 
@@ -304,7 +284,7 @@
     }
 
     function normalizarParaBuscaLote(texto) {
-        let t = texto.replace(/[,-]/g, ' ').trim();
+        let t = texto.replace(/\d+/g, '').replace(/[,-]/g, ' ').trim();
         t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
         t = t.replace(/\bAV\b/g, 'AVENIDA').replace(/\bR\b/g, 'RUA').replace(/\bSTA\b/g, 'SANTA').replace(/\bSTO\b/g, 'SANTO').replace(/\bS\b/g, 'SAO').replace(/\bDR\b/g, 'DOUTOR').replace(/\bPROF\b/g, 'PROFESSOR');
         return t.replace(/\s+/g, ' ').trim();
@@ -314,35 +294,31 @@
         let termosRua = ruaBuscada.split(' ').filter(t => t.length > 2);
         if(termosRua.length === 0) return null;
 
-        const prefixosVias = ["RUA", "AVENIDA", "AV", "R", "ALAMEDA", "TRAVESSA", "PRACA", "PC", "ESTRADA"];
-        let termosPrincipais = termosRua.filter(t => !prefixosVias.includes(t));
-        if (termosPrincipais.length === 0) termosPrincipais = termosRua;
-
         let lotesRua = [];
         turf.featureEach(dadosLotes, function(lote) {
-            let nomeLote = lote.properties[keyEndereco];
+            let nomeLote = lote.properties['AL_Endere?'];
             if (nomeLote) {
                 let nomeNorm = nomeLote.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-                if (termosPrincipais.every(termo => nomeNorm.includes(termo))) lotesRua.push(lote);
+                if (termosRua.every(termo => nomeNorm.includes(termo))) lotesRua.push(lote);
             }
         });
 
         if(lotesRua.length === 0) return null;
-        let nomeOficial = lotesRua[0].properties[keyEndereco];
+        let nomeOficial = lotesRua[0].properties['AL_Endere?'];
 
-        let exato = lotesRua.find(l => l.properties[keyNumero] !== null && parseInt(l.properties[keyNumero]) === numeroBuscado);
+        // Checa número exato
+        let exato = lotesRua.find(l => parseInt(l.properties['AL_Numera?']) === numeroBuscado);
         if(exato) return { feature: exato, tipo: 'exato', nome: nomeOficial };
 
-        let comNumeros = lotesRua.filter(l => l.properties[keyNumero] !== null && !isNaN(parseInt(l.properties[keyNumero])));
-        if(comNumeros.length === 0) {
-            return { feature: lotesRua[0], tipo: 'aproximado', nome: nomeOficial };
-        }
+        // Se não achou exato, interpole entre os mais próximos
+        let comNumeros = lotesRua.filter(l => l.properties['AL_Numera?'] !== null);
+        if(comNumeros.length === 0) return null;
 
-        comNumeros.sort((a, b) => parseInt(a.properties[keyNumero]) - parseInt(b.properties[keyNumero]));
+        comNumeros.sort((a, b) => a.properties['AL_Numera?'] - b.properties['AL_Numera?']);
         let menor = null, maior = null;
 
         for(let l of comNumeros) {
-            let num = parseInt(l.properties[keyNumero]);
+            let num = parseInt(l.properties['AL_Numera?']);
             if(num <= numeroBuscado) menor = l;
             if(num >= numeroBuscado && !maior) maior = l;
         }
@@ -381,35 +357,29 @@
 
     function executarBuscaGeografica(termoBusca) {
         const textoSemCep = termoBusca.replace(/\b\d{8}\b|\b\d{5}-?\d{3}\b/g, "").trim();
-        
-        const todosNumeros = textoSemCep.match(/\d+/g);
-        const temNumero = todosNumeros !== null;
-        const numeroBuscado = temNumero ? parseInt(todosNumeros[todosNumeros.length - 1]) : null;
+        const numMatch = textoSemCep.match(/\d+/);
+        const temNumero = numMatch !== null;
+        const numeroBuscado = temNumero ? parseInt(numMatch[0]) : null;
 
-        let ruaSemNumeroImovel = textoSemCep;
-        if (temNumero) {
-            const ultimoNumeroStr = todosNumeros[todosNumeros.length - 1];
-            const idxUltimoNumero = textoSemCep.lastIndexOf(ultimoNumeroStr);
-            ruaSemNumeroImovel = textoSemCep.substring(0, idxUltimoNumero) + textoSemCep.substring(idxUltimoNumero + ultimoNumeroStr.length);
-        }
-
+        // --- 1. TENTATIVA NA BASE DE LOTES MUNICIPAIS ---
         if (temNumero && dadosLotes) {
-            let ruaNorm = normalizarParaBuscaLote(ruaSemNumeroImovel);
+            let ruaNorm = normalizarParaBuscaLote(textoSemCep);
             let resultadoLote = buscarLoteExatoOuAproximado(ruaNorm, numeroBuscado);
             
             if (resultadoLote) {
-                mostrarResultado("Processando numeração precisa via base de lotes...", "info");
+                mostrarResultado("Processando numeração exata via base de lotes...", "info");
                 let coords = turf.getCoord(resultadoLote.feature);
                 let latCentro = coords[1], lonCentro = coords[0];
                 let popupHTML = gerarPopupLote(resultadoLote.nome, numeroBuscado, resultadoLote.tipo);
                 
                 renderizarMapaUBS(latCentro, lonCentro, true, popupHTML, null, null, null);
-                return;
+                return; // Encerra aqui se encontrou no Lote
             }
         }
 
+        // --- 2. FALLBACK OSM (Nominatim + Overpass) ---
         const buscaFinal = termoBusca.toLowerCase().includes("sorocaba") ? termoBusca : `${termoBusca}, Sorocaba, SP`;
-        mostrarResultado(temNumero ? "Localizando via e identificando UBS correspondente..." : "Mapeando malha viária completa...", "info");
+        mostrarResultado(temNumero ? "Localizando rua e identificando UBS correspondente..." : "Mapeando malha viária completa...", "info");
 
         const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(buscaFinal)}&limit=5&accept-language=pt-BR&email=geosaude.sorocaba.app@gmail.com`;
 
@@ -457,6 +427,7 @@
             .catch(error => mostrarResultado(`Ops! Ocorreu um erro: ${error.message}`, "erro"));
     }
 
+    // Renderização e Lógica Espacial Global
     function renderizarMapaUBS(latCentro, lonCentro, temNumero, popupHtmlText, overpassData, resultadosNominatim, nomeOficial) {
         camadasBusca.clearLayers();
         camadasPoligonos.clearLayers();
@@ -549,32 +520,28 @@
                 let horSeguro = (feature.properties.Horario || "").replace(/(\r\n|\n|\r)/gm, " ");
                 let argsCliq = `'${nomeUbsLimpo.replace(/'/g, "\\'")}', '${endSeguro.replace(/'/g, "\\'")}', '${horSeguro.replace(/'/g, "\\'")}'`;
 
-                htmlResultado += `<div class="ubs-item">📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${nomeUbsLimpo} - Cod. Microrregião (<b>${codigo}</b>)</span></div>`;
+                htmlResultado += `<div class="ubs-item">📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${nomeUbsLimpo} - Cod. Microgregião (<b>${codigo}</b>)</span></div>`;
                 
                 const poliLayer = L.geoJSON(feature, { style: { color: "#10b981", weight: 2.5, fillOpacity: 0.12 } }).addTo(camadasPoligonos);
                 boundsGeral.extend(poliLayer.getBounds());
 
                 try {
-                    let centroid = turf.centroid(feature);
-                    let coords = centroid.geometry.coordinates;
+                    let coords = turf.centerOfMass(feature).geometry.coordinates;
                     L.marker([coords[1], coords[0]], {
                         icon: L.divIcon({ className: 'rotulo-ubs', html: `<div>UBS ${nomeUbsLimpo.toUpperCase()}</div>`, iconSize: [160, 40], iconAnchor: [80, 20] }),
                         interactive: false
                     }).addTo(camadasPoligonos);
-                } catch (e) {
-                    console.warn("Aviso ao definir centroide do poligono.", e);
-                }
+                } catch (e) {}
             });
 
             if (!temNumero && ubsEncontradasFeatures.length > 1) {
-                htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via abrange múltiplas regiões. Para saber a UBS exata, inclua o número do imóvel na próxima busca.</i><br>📍 Quer saber o endereço? clique ou toque no ícone da sua UBS</small>`;
+                htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via abrange múltiplas regiões. Para saber a UBS exata, inclua o número do imóvel na próxima busca.</i><br>📍 Quer saber o endereço? clique ou toque no icone da sua UBS</small>`;
             } else {
                 htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Quer saber o endereço? clique ou toque na sua UBS</i></small>`;
             }
 
             mostrarResultado(htmlResultado, "sucesso");
-            
-            temNumero ? map.setView([latCentro, lonCentro], 19) : map.fitBounds(boundsGeral, { padding: [30, 30] });
+            temNumero ? map.setView([latCentro, lonCentro], 17) : map.fitBounds(boundsGeral, { padding: [30, 30] });
         } else {
             mostrarResultado("Endereço localizado, mas não intercepta nenhuma área de UBS cadastrada.", "erro");
             boundsGeral.isValid() ? map.fitBounds(boundsGeral, { padding: [30, 30] }) : map.setView([latCentro, lonCentro], 15);
