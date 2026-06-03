@@ -177,10 +177,21 @@
         .then(data => { dadosUbs = data; })
         .catch(() => mostrarResultado("Erro ao carregar banco de dados das UBS.", "erro"));
 
-    fetch('lotes_sorocaba_pontos.json')
-        .then(response => response.ok ? response.json() : Promise.reject())
-        .then(data => { dadosLotes = data; })
-        .catch(() => console.log("Aviso: Base de Lotes não encontrada. Usando modo de rede viária."));
+    // Carregamento das 3 partes divididas em paralelo dentro da pasta lotes_sorocaba_pontos
+    Promise.all([
+        fetch('lotes_sorocaba_pontos/lotes_sorocaba_pontos_part01.json').then(response => response.ok ? response.json() : Promise.reject()),
+        fetch('lotes_sorocaba_pontos/lotes_sorocaba_pontos_part02.json').then(response => response.ok ? response.json() : Promise.reject()),
+        fetch('lotes_sorocaba_pontos/lotes_sorocaba_pontos_part03.json').then(response => response.ok ? response.json() : Promise.reject())
+    ])
+    .then(([part1, part2, part3]) => {
+        dadosLotes = {
+            type: "FeatureCollection",
+            name: "lotes_sorocaba_pontos",
+            crs: part1.crs || { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+            features: [...part1.features, ...part2.features, ...part3.features]
+        };
+    })
+    .catch(() => console.log("Aviso: Base de Lotes nao encontrada ou incompleta. Usando modo de rede viaria."));
 
     function formatarEndereco(endStr) {
         if (!endStr) return "Endereço não disponível";
@@ -233,7 +244,6 @@
         setTimeout(() => { map.invalidateSize(); }, 200);
     }
 
-    // Geração de Popup Formatado para Nominatim
     function gerarPopupNominatim(resultadoItem, numeroBuscado) {
         let displayName = resultadoItem.display_name;
         let road = resultadoItem.address ? (resultadoItem.address.road || resultadoItem.address.pedestrian || resultadoItem.address.square || resultadoItem.address.suburb || resultadoItem.name) : null;
@@ -257,7 +267,6 @@
         return `<b>Localização Encontrada:</b><br>${displayName}`;
     }
 
-    // Geração de Popup Formatado para Base de Lotes
     function gerarPopupLote(nomeRua, numero, tipo) {
         let aviso = (tipo === 'interpolado' || tipo === 'aproximado') 
             ? '<br><small style="color:#64748b; font-weight:normal;"><i>(Localização aproximada calculada via base de lotes)</i></small>' : '';
@@ -306,11 +315,9 @@
         if(lotesRua.length === 0) return null;
         let nomeOficial = lotesRua[0].properties['AL_Endere?'];
 
-        // Checa número exato
         let exato = lotesRua.find(l => parseInt(l.properties['AL_Numera?']) === numeroBuscado);
         if(exato) return { feature: exato, tipo: 'exato', nome: nomeOficial };
 
-        // Se não achou exato, interpole entre os mais próximos
         let comNumeros = lotesRua.filter(l => l.properties['AL_Numera?'] !== null);
         if(comNumeros.length === 0) return null;
 
@@ -361,7 +368,6 @@
         const temNumero = numMatch !== null;
         const numeroBuscado = temNumero ? parseInt(numMatch[0]) : null;
 
-        // --- 1. TENTATIVA NA BASE DE LOTES MUNICIPAIS ---
         if (temNumero && dadosLotes) {
             let ruaNorm = normalizarParaBuscaLote(textoSemCep);
             let resultadoLote = buscarLoteExatoOuAproximado(ruaNorm, numeroBuscado);
@@ -373,11 +379,10 @@
                 let popupHTML = gerarPopupLote(resultadoLote.nome, numeroBuscado, resultadoLote.tipo);
                 
                 renderizarMapaUBS(latCentro, lonCentro, true, popupHTML, null, null, null);
-                return; // Encerra aqui se encontrou no Lote
+                return;
             }
         }
 
-        // --- 2. FALLBACK OSM (Nominatim + Overpass) ---
         const buscaFinal = termoBusca.toLowerCase().includes("sorocaba") ? termoBusca : `${termoBusca}, Sorocaba, SP`;
         mostrarResultado(temNumero ? "Localizando rua e identificando UBS correspondente..." : "Mapeando malha viária completa...", "info");
 
@@ -427,7 +432,6 @@
             .catch(error => mostrarResultado(`Ops! Ocorreu um erro: ${error.message}`, "erro"));
     }
 
-    // Renderização e Lógica Espacial Global
     function renderizarMapaUBS(latCentro, lonCentro, temNumero, popupHtmlText, overpassData, resultadosNominatim, nomeOficial) {
         camadasBusca.clearLayers();
         camadasPoligonos.clearLayers();
