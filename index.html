@@ -3,160 +3,611 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa de Abrangência - UBS</title>
+    <title>Busca de Endereço por UBS - Sorocaba (SP)</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
     <style>
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        #map { width: 100%; height: 100vh; }
-        #search-container {
-            position: absolute;
-            top: 20px;
-            left: 50px;
-            z-index: 1000;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f4f6f9; 
+            color: #333;
         }
-        input, button { padding: 8px; margin: 4px 0; width: 100%; box-sizing: border-box; }
-        #status { font-size: 12px; color: #555; margin-top: 5px; }
+        .container { 
+            max-width: 850px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+        }
+        h2 { margin-top: 0; color: #1e293b; font-size: 24px; }
+        p { color: #64748b; font-size: 15px; margin-bottom: 20px; }
+        
+        .busca-box { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 20px; 
+        }
+        input[type="text"] { 
+            flex: 1; 
+            padding: 14px; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 6px; 
+            font-size: 16px; 
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus { border-color: #3b82f6; }
+        button { 
+            padding: 14px 28px; 
+            background-color: #2563eb; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-size: 16px; 
+            white-space: nowrap; 
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #1d4ed8; }
+        
+        #map { 
+            height: 55vh; 
+            min-height: 350px;
+            max-height: 600px;
+            width: 100%; 
+            margin-top: 20px; 
+            border-radius: 8px; 
+            display: none; 
+            z-index: 1; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+        }
+        #resultado { 
+            margin-top: 20px; 
+            padding: 18px; 
+            border-radius: 6px; 
+            font-weight: 600; 
+            line-height: 1.5;
+            display: none; 
+            word-wrap: break-word;
+        }
+        
+        .sucesso { background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .erro { background-color: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+        .info { background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+        .rotulo-ubs {
+            background: none;
+            border: none;
+            box-shadow: none;
+            font-size: 14px;
+            font-weight: 900;
+            color: #1e293b;
+            text-align: center;
+            text-shadow: 
+                -2px -2px 0 #FFF, 2px -2px 0 #FFF, 
+                -2px 2px 0 #FFF, 2px 2px 0 #FFF,
+                -1px 0px 0 #FFF, 1px 0px 0 #FFF,
+                0px -1px 0 #FFF, 0px 1px 0 #FFF;
+        }
+
+        .ubs-item { margin-bottom: 8px; }
+        .ubs-clickable {
+            cursor: pointer;
+            text-decoration: underline;
+            color: #065f46;
+            transition: color 0.2s;
+        }
+        .ubs-clickable:hover { color: #047857; }
+        
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); z-index: 2000;
+            display: none; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: #fff; padding: 25px; border-radius: 10px;
+            width: 90%; max-width: 450px; position: relative;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            color: #333; font-weight: normal; line-height: 1.6;
+        }
+        .modal-close {
+            position: absolute; top: 12px; right: 18px;
+            cursor: pointer; font-size: 22px; font-weight: bold; color: #94a3b8;
+            transition: color 0.2s;
+        }
+        .modal-close:hover { color: #ef4444; }
+        .modal-titulo { font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 10px; margin-top: 0;}
+        .modal-endereco { margin-bottom: 15px; }
+        .modal-horario { font-size: 15px; }
+
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .container { padding: 15px; }
+            .busca-box { flex-direction: column; }
+            button { width: 100%; }
+            h2 { font-size: 20px; }
+        }
     </style>
 </head>
 <body>
 
-<div id="search-container">
-    <input type="text" id="endereco" placeholder="Digite o Logradouro e Número (ex: Rua X, 150)">
-    <button onclick="buscarEndereco()">Pesquisar</button>
-    <div id="status">Carregando base de dados...</div>
+<div class="container">
+    <h2>Descubra sua UBS - Sorocaba (SP)</h2>
+    <p>Digite seu logradouro (Exemplos: Avenida Itavuvu, Avenida Brasil 60 ou 18071650):</p>
+    
+    <div class="busca-box">
+        <input type="text" id="endereco" placeholder="Rua, avenida, número, ou CEP">
+        <button onclick="buscarEndereco()">Buscar</button>
+    </div>
+
+    <div id="resultado"></div>
+    <div id="map"></div>
 </div>
 
-<div id="map"></div>
+<div id="modal-ubs" class="modal-overlay" onclick="fecharModalFora(event)">
+    <div class="modal-content">
+        <span class="modal-close" onclick="fecharPopupUbs()">×</span>
+        <h3 id="modal-titulo" class="modal-titulo"></h3>
+        <div id="modal-endereco" class="modal-endereco"></div>
+        <div id="modal-horario" class="modal-horario"></div>
+    </div>
+</div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Inicialização do Mapa centrado na região
-    const map = L.map('map').setView([-23.5015, -47.4581], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
+    let dadosUbs = null;
+    let indexLotesPorRua = new Map(); // Dicionário indexado para buscas ultrarrápidas
+    let map = null;
+    let camadasBusca = L.layerGroup();
+    let camadasPoligonos = L.layerGroup(); 
 
-    let marker = null;
-    let baseUBS = new Map(); // Mapa para busca ultrarrápida O(1)
+    // Chaves padrão
+    let keyEndereco = "AL_Endere?";
+    let keyNumero = "AL_Numera?";
+    let keyUbsLote = "UBS"; 
 
-    // Função para carregar as 4 partes da base de dados e indexar por logradouro
-    async function carregarBaseDeDados() {
-        const arquivos = [
-            'lotes_sorocaba_pontos_part1.json',
-            'lotes_sorocaba_pontos_part2.json',
-            'lotes_sorocaba_pontos_part3.json',
-            'lotes_sorocaba_pontos_part4.json'
-        ];
+    document.getElementById('endereco').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') { buscarEndereco(); }
+    });
 
-        try {
-            for (const arquivo of arquivos) {
-                const response = await fetch(arquivo);
-                if (!response.ok) continue;
+    // 1. Carregamento dos Polígonos das UBS
+    fetch('abrangencia_ubs_sorocaba.json')
+        .then(response => response.ok ? response.json() : Promise.reject())
+        .then(data => { dadosUbs = data; })
+        .catch(() => mostrarResultado("Erro ao carregar banco de dados dos polígonos das UBS.", "erro"));
+
+    // Função auxiliar para estruturar string pura de rua
+    function normalizarApenasRua(texto) {
+        let t = texto.replace(/\d+/g, '').replace(/[,-]/g, ' ').trim();
+        t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        t = t.replace(/\bAV\b/g, 'AVENIDA').replace(/\bR\b/g, 'RUA').replace(/\bSTA\b/g, 'SANTA').replace(/\bSTO\b/g, 'SANTO').replace(/\bS\b/g, 'SAO').replace(/\bDR\b/g, 'DOUTOR').replace(/\bPROF\b/g, 'PROFESSOR');
+        return t.replace(/\s+/g, ' ').trim();
+    }
+
+    // 2. Carregamento das 4 partes da Base de Lotes
+    console.log("Iniciando indexação paralela das partes de lotes (Otimização ativada)...");
+    Promise.all([
+        fetch('lotes_sorocaba_pontos/lotes_sorocaba_pontos_part1.json').then(r => r.ok ? r.json() : Promise.reject()),
+        fetch('lotes_sorocaba_pontos/lotes_sorocaba_pontos_part2.json').then(r => r.ok ? r.json() : Promise.reject()),
+        fetch('lotes_sorocaba_pontos/lotes_sorocaba_pontos_part3.json').then(r => r.ok ? r.json() : Promise.reject()),
+        fetch('lotes_sorocaba_pontos/lotes_sorocaba_pontos_part4.json').then(r => r.ok ? r.json() : Promise.reject())
+    ])
+    .then(parts => {
+        let totalLotes = 0;
+        parts.forEach(part => {
+            if (part && part.features) {
+                part.features.forEach(feature => {
+                    let nomeRuaOriginal = feature.properties[keyEndereco];
+                    if (nomeRuaOriginal) {
+                        let ruaNorm = normalizarApenasRua(nomeRuaOriginal);
+                        // Cria a caixa da rua se não existir
+                        if (!indexLotesPorRua.has(ruaNorm)) {
+                            indexLotesPorRua.set(ruaNorm, []);
+                        }
+                        // Guarda o lote dentro da rua correspondente
+                        indexLotesPorRua.get(ruaNorm).push(feature);
+                        totalLotes++;
+                    }
+                });
+            }
+        });
+        console.log(`Sucesso! ${totalLotes} lotes indexados na memória. O site não travará nas buscas.`);
+    })
+    .catch((err) => {
+        console.error("Aviso: Falha ao carregar as partes de lotes.", err);
+    });
+
+    // ---------------- FUNÇÕES DE UTILIDADE E FORMATAÇÃO ---------------- //
+
+    function formatarEndereco(endStr) {
+        if (!endStr) return "Endereço não disponível";
+        let partes = endStr.split(",");
+        let logradouroSemAcento = partes[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        partes[0] = `<b>${logradouroSemAcento}</b>`;
+        return partes.join(",");
+    }
+
+    function formatarHorario(horStr) {
+        if (!horStr) return "Horário não informado";
+        if (horStr.includes("PA -") && horStr.includes("UBS -")) {
+            let partes = horStr.split("PA -");
+            let ubsParte = partes[0].replace("UBS -", "").trim();
+            let paParte = partes[1].trim();
+            return `Horários Seg. à Sex:<br>UBS - das ${ubsParte}<br>PA - das ${paParte}<br><br>Finais de Semana e Feriados:<br>Urgência (PA) - 24 Horas`;
+        } else {
+            let horaLimpa = horStr.trim();
+            if (!horaLimpa.toLowerCase().startsWith("das ")) horaLimpa = "das " + horaLimpa;
+            return `Horários Seg. à Sex: ${horaLimpa}`;
+        }
+    }
+
+    function abrirPopupUbs(nome, endereco, horario) {
+        document.getElementById('modal-titulo').innerText = `UBS ${nome}:`;
+        document.getElementById('modal-endereco').innerHTML = formatarEndereco(endereco);
+        document.getElementById('modal-horario').innerHTML = formatarHorario(horario);
+        document.getElementById('modal-ubs').style.display = 'flex';
+    }
+
+    function fecharPopupUbs() {
+        document.getElementById('modal-ubs').style.display = 'none';
+    }
+
+    function fecharModalFora(event) {
+        if (event.target === document.getElementById('modal-ubs')) fecharPopupUbs();
+    }
+
+    function initMap(lat, lon, zoom = 13) {
+        const mapDiv = document.getElementById('map');
+        mapDiv.style.display = 'block';
+        if (!map) {
+            map = L.map('map').setView([lat, lon], zoom);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            camadasBusca.addTo(map);
+            camadasPoligonos.addTo(map);
+        }
+        setTimeout(() => { map.invalidateSize(); }, 200);
+    }
+
+    function gerarPopupNominatim(resultadoItem, numeroBuscado) {
+        let displayName = resultadoItem.display_name;
+        let road = resultadoItem.address ? (resultadoItem.address.road || resultadoItem.address.pedestrian || resultadoItem.address.square || resultadoItem.address.suburb || resultadoItem.name) : null;
+
+        if (road) {
+            let regexRoad = new RegExp(road + "([, -]*)", 'i');
+            let restoEndereco = displayName.replace(regexRoad, '');
+            restoEndereco = restoEndereco.replace(/^[, -\s]+/, ''); 
+            let titulo = `<b>${road.toUpperCase()}`;
+
+            if (!numeroBuscado) {
+                titulo += ` -</b> `;
+            } else {
+                let regexNum = new RegExp('^' + numeroBuscado + '([, -]*)', 'i');
+                restoEndereco = restoEndereco.replace(regexNum, '');
+                titulo += `, ${numeroBuscado} -</b> `;
+            }
+            return `<b>Localização Encontrada:</b><br>${titulo}${restoEndereco}`;
+        }
+        return `<b>Localização Encontrada:</b><br>${displayName}`;
+    }
+
+    function calcularExtensaoDentro(linhaString, poligono) {
+        let comprimentoDentro = 0;
+        let lines = [];
+        if (linhaString.geometry.type === "LineString") { lines.push(linhaString); } 
+        else if (linhaString.geometry.type === "MultiLineString") {
+            linhaString.geometry.coordinates.forEach(coords => lines.push(turf.lineString(coords)));
+        } else { return 999; }
+
+        lines.forEach(linha => {
+            let pedacos = turf.lineChunk(linha, 0.005, {units: 'kilometers'});
+            turf.featureEach(pedacos, function(pedaco) {
+                let tamanho = turf.length(pedaco, {units: 'kilometers'});
+                let ponto = turf.along(pedaco, tamanho / 2, {units: 'kilometers'});
+                if (turf.booleanPointInPolygon(ponto, poligono)) comprimentoDentro += tamanho * 1000;
+            });
+        });
+        return comprimentoDentro;
+    }
+
+    // Pega a coordenada independente de ser Point ou MultiPoint
+    function getSafeCoord(feature) {
+        if (feature.geometry.type === "Point") return feature.geometry.coordinates;
+        if (feature.geometry.type === "MultiPoint") return feature.geometry.coordinates[0];
+        return turf.centroid(feature).geometry.coordinates;
+    }
+
+    // ---------------- LÓGICA RÁPIDA DE BUSCA NOS LOTES ---------------- //
+
+    function buscarLoteExatoOuAproximado(ruaBuscadaTexto, numeroBuscado) {
+        let ruaNorm = normalizarApenasRua(ruaBuscadaTexto);
+        
+        // Pega todos os lotes só da rua digitada (Tempo de resposta: instantâneo)
+        let lotesDaRua = indexLotesPorRua.get(ruaNorm);
+        
+        // Se não achar exato, tenta correspondência parcial (ex: "Av Brasil" acha "Avenida Brasil")
+        if (!lotesDaRua) {
+            for (let [chave, lotes] of indexLotesPorRua.entries()) {
+                if (chave.includes(ruaNorm) || ruaNorm.includes(chave)) {
+                    lotesDaRua = lotes;
+                    break;
+                }
+            }
+        }
+
+        if (!lotesDaRua || lotesDaRua.length === 0) return null;
+
+        let nomeOficialRuaLote = lotesDaRua[0].properties[keyEndereco];
+
+        // 1. Número Exato
+        let exato = lotesDaRua.find(l => l.properties[keyNumero] !== null && parseInt(l.properties[keyNumero]) === numeroBuscado);
+        if (exato) return { feature: exato, tipo: 'exato', nome: nomeOficialRuaLote, refFeatureUbsLote: exato };
+
+        // 2. Interpolação na Mediana
+        let comNumeros = lotesDaRua.filter(l => l.properties[keyNumero] !== null && !isNaN(parseInt(l.properties[keyNumero])));
+        if (comNumeros.length === 0) {
+            return { feature: lotesDaRua[0], tipo: 'aproximado_rua', nome: nomeOficialRuaLote, refFeatureUbsLote: lotesDaRua[0] };
+        }
+
+        comNumeros.sort((a, b) => parseInt(a.properties[keyNumero]) - parseInt(b.properties[keyNumero]));
+        let menor = null, maior = null;
+
+        for(let l of comNumeros) {
+            let num = parseInt(l.properties[keyNumero]);
+            if(num <= numeroBuscado) menor = l;
+            if(num >= numeroBuscado && !maior) maior = l;
+        }
+
+        if (menor && maior) {
+            if (menor === maior) return { feature: menor, tipo: 'aproximado_vizinho', nome: nomeOficialRuaLote, refFeatureUbsLote: menor };
+            let p1 = getSafeCoord(menor);
+            let p2 = getSafeCoord(maior);
+            let midpoint = turf.midpoint(turf.point(p1), turf.point(p2));
+            return { feature: midpoint, tipo: 'interpolado', nome: nomeOficialRuaLote, refFeatureUbsLote: menor };
+        } else if (menor || maior) {
+            let vizinhoUnico = menor || maior;
+            return { feature: vizinhoUnico, tipo: 'aproximado_vizinho', nome: nomeOficialRuaLote, refFeatureUbsLote: vizinhoUnico };
+        }
+        return null;
+    }
+
+    // ---------------- FLUXO PRINCIPAL ---------------- //
+
+    function buscarEndereco() {
+        let enderecoDigitado = document.getElementById('endereco').value.trim();
+        if (!enderecoDigitado) {
+            mostrarResultado("Por favor, digite um logradouro.", "erro");
+            return;
+        }
+        
+        // Limpa o mapa das pesquisas anteriores para que o novo pin funcione perfeitamente
+        camadasBusca.clearLayers();
+        camadasPoligonos.clearLayers();
+
+        const cepLimpo = enderecoDigitado.replace(/\D/g, '');
+        if (cepLimpo.length === 8) {
+            mostrarResultado("Buscando logradouro via CEP...", "info");
+            fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.erro || !data.logradouro) throw new Error();
+                    executarBuscaGeografica(data.logradouro);
+                }).catch(() => executarBuscaGeografica(enderecoDigitado));
+        } else {
+            executarBuscaGeografica(enderecoDigitado);
+        }
+    }
+
+    function executarBuscaGeografica(termoBusca) {
+        const textoSemCep = termoBusca.replace(/\b\d{8}\b|\b\d{5}-?\d{3}\b/g, "").trim();
+        const todosNumeros = textoSemCep.match(/\d+/g);
+        const temNumero = todosNumeros !== null;
+        const numeroBuscado = temNumero ? parseInt(todosNumeros[todosNumeros.length - 1]) : null;
+
+        let ruaSemNumeroImovel = textoSemCep;
+        if (temNumero) {
+            const ultimoNumeroStr = todosNumeros[todosNumeros.length - 1];
+            const idxUltimoNumero = textoSemCep.lastIndexOf(ultimoNumeroStr);
+            ruaSemNumeroImovel = textoSemCep.substring(0, idxUltimoNumero) + textoSemCep.substring(idxUltimoNumero + ultimoNumeroStr.length);
+        }
+
+        // =====================================================================
+        // ROTA A: RÁPIDA (Via Índice de Lotes carregados na memória)
+        // =====================================================================
+        if (temNumero && indexLotesPorRua.size > 0) {
+            let resultadoLote = buscarLoteExatoOuAproximado(ruaSemNumeroImovel, numeroBuscado);
+            
+            if (resultadoLote) {
+                mostrarResultado("Processando localização na base oficial do município...", "info");
                 
-                const data = await response.json();
+                let nomeDaUbsAtribuidaNoLote = resultadoLote.refFeatureUbsLote.properties[keyUbsLote];
+                let coords = getSafeCoord(resultadoLote.feature);
+                let latCentro = coords[1], lonCentro = coords[0];
+
+                let tipoTexto = resultadoLote.tipo === 'exato' ? '' : '<br><small style="color:#64748b; font-weight:normal;"><i>(A numeração exata não consta no mapeamento oficial. A localização foi aproximada de forma inteligente com base no lote vizinho.)</i></small>';
+                let popupHTML = `<b>Localização Encontrada:</b><br><b>${resultadoLote.nome.toUpperCase()}, ${numeroBuscado} -</b> Sorocaba, São Paulo, Brasil${tipoTexto}`;
                 
-                // Extrai apenas o necessário para criar um índice rápido: Rua -> UBS
-                data.features.forEach(feature => {
-                    const props = feature.properties;
-                    // Ajuste 'AL_Endere?' para o nome exato da chave de endereço no seu JSON, se necessário
-                    let rua = props['AL_Endere?'] || props['ENDERECO'] || ""; 
-                    let ubs = props['UBS'];
+                initMap(latCentro, lonCentro);
+                L.marker([latCentro, lonCentro]).addTo(camadasBusca).bindPopup(popupHTML).openPopup();
+                
+                if (nomeDaUbsAtribuidaNoLote && dadosUbs) {
+                    let ubsLimpa = nomeDaUbsAtribuidaNoLote.replace(/^RN\s+/i, '').trim();
+                    let htmlRes = `📍 <b>Localização e Numeração identificadas!</b><br>Este imóvel é atendido pela:<br><br>`;
                     
-                    if (rua && ubs) {
-                        // Normaliza o nome da rua para facilitar a busca (sem acentos, minúsculas)
-                        rua = rua.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-                        if (!baseUBS.has(rua)) {
-                            baseUBS.set(rua, ubs);
+                    turf.featureEach(dadosUbs, function (ubsPoligono) {
+                        let nomePoligonoLimpo = ubsPoligono.properties.UBS ? ubsPoligono.properties.UBS.replace(/^RN\s+/i, '').trim() : "";
+                        
+                        if (nomePoligonoLimpo.toLowerCase() === ubsLimpa.toLowerCase()) {
+                            let codigo = ubsPoligono.properties['Codigo microrregiao'] || ubsPoligono.properties.codigo_microrregiao || "S/N";
+                            let endSeguro = (ubsPoligono.properties.END || "").replace(/(\r\n|\n|\r)/gm, " ");
+                            let horSeguro = (ubsPoligono.properties.Horario || "").replace(/(\r\n|\n|\r)/gm, " ");
+                            let argsCliq = `'${ubsLimpa.replace(/'/g, "\\'")}', '${endSeguro.replace(/'/g, "\\'")}', '${horSeguro.replace(/'/g, "\\'")}'`;
+
+                            htmlRes += `<div class="ubs-item">📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${ubsLimpa} - Cod. Microrregião (<b>${codigo}</b>)</span></div>`;
+                            
+                            const poliLayer = L.geoJSON(ubsPoligono, { style: { color: "#10b981", weight: 2.5, fillOpacity: 0.12 } }).addTo(camadasPoligonos);
+                            
+                            try {
+                                let centroid = turf.centroid(ubsPoligono);
+                                let coordsC = centroid.geometry.coordinates;
+                                L.marker([coordsC[1], coordsC[0]], {
+                                    icon: L.divIcon({ className: 'rotulo-ubs', html: `<div>UBS ${ubsLimpa.toUpperCase()}</div>`, iconSize: [160, 40], iconAnchor: [80, 20] }),
+                                    interactive: false
+                                }).addTo(camadasPoligonos);
+                            } catch (e) {}
+                        }
+                    });
+                    htmlRes += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Quer saber o endereço? clique ou toque na sua UBS</i></small>`;
+                    mostrarResultado(htmlRes, "sucesso");
+                } else {
+                    mostrarResultado(`Endereço localizado, mas sem região de UBS atrelada no momento.`, "erro");
+                }
+                
+                map.setView([latCentro, lonCentro], 19);
+                return;
+            }
+        }
+
+        // =====================================================================
+        // ROTA B: FALLBACK (Sem número ou caso a via não esteja nos lotes locais)
+        // =====================================================================
+        const buscaFinal = termoBusca.toLowerCase().includes("sorocaba") ? termoBusca : `${termoBusca}, Sorocaba, SP`;
+        mostrarResultado("Consultando base da rede viária integral...", "info");
+
+        const urlGeocode = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(buscaFinal)}&limit=5&accept-language=pt-BR&email=geosaude.sorocaba.app@gmail.com`;
+
+        fetch(urlGeocode)
+            .then(res => { if (!res.ok) throw new Error(`Erro de rede.`); return res.json(); })
+            .then(resultados => {
+                if (resultados.length === 0) throw new Error("Endereço não encontrado na base de dados global.");
+
+                let viasEncontradas = resultados.filter(r => r.class === 'highway' || r.type === 'residential');
+                let nomeOficial = viasEncontradas.length > 0 && viasEncontradas[0].address && viasEncontradas[0].address.road 
+                                  ? viasEncontradas[0].address.road 
+                                  : (resultados[0].address && resultados[0].address.road ? resultados[0].address.road : (viasEncontradas.length > 0 ? viasEncontradas[0].name : resultados[0].name));
+                
+                let latCentro = parseFloat(resultados[0].lat);
+                let lonCentro = parseFloat(resultados[0].lon);
+                let popupHTML = gerarPopupNominatim(resultados[0], numeroBuscado);
+
+                if (temNumero) {
+                    renderizarMapaLinhaUbs(latCentro, lonCentro, true, popupHTML, null, resultados, nomeOficial);
+                } else {
+                    const urlOverpass = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(`[out:json][timeout:15];area["name"="Sorocaba"]->.a;way(area.a)["name"="${nomeOficial}"];out geom;`)}`;
+                    fetch(urlOverpass)
+                        .then(res => res.ok ? res.json() : { elements: [] })
+                        .then(overpassData => renderizarMapaLinhaUbs(latCentro, lonCentro, false, popupHTML, overpassData, resultados, nomeOficial))
+                        .catch(() => renderizarMapaLinhaUbs(latCentro, lonCentro, false, popupHTML, null, resultados, nomeOficial));
+                }
+            })
+            .catch(error => mostrarResultado(`Ops! Ocorreu um erro: ${error.message}`, "erro"));
+    }
+
+    // Calcula interseção física do traçado do Overpass/Nominatim com os Polígonos de UBS
+    function renderizarMapaLinhaUbs(latCentro, lonCentro, temNumero, popupHtmlText, overpassData, resultadosNominatim, nomeOficial) {
+        initMap(latCentro, lonCentro);
+
+        let ubsEncontradasFeatures = [];
+        let ubsNomes = new Set();
+        let boundsGeral = L.latLngBounds();
+
+        L.marker([latCentro, lonCentro]).addTo(camadasBusca).bindPopup(popupHtmlText).openPopup();
+        boundsGeral.extend([latCentro, lonCentro]);
+
+        function verificarPoligonosIntersectados(featureElemento) {
+            if (dadosUbs) {
+                turf.featureEach(dadosUbs, function (ubsPoligono) {
+                    if (turf.booleanIntersects(featureElemento, ubsPoligono)) {
+                        let extTotal = featureElemento.geometry.type.includes("Line") ? turf.length(featureElemento, {units: 'kilometers'}) * 1000 : 999;
+                        let extDentro = calcularExtensaoDentro(featureElemento, ubsPoligono);
+                        if (extDentro >= 15 || extTotal <= 15) {
+                            let nomeUbs = ubsPoligono.properties.UBS;
+                            if (!ubsNomes.has(nomeUbs)) { ubsNomes.add(nomeUbs); ubsEncontradasFeatures.push(ubsPoligono); }
                         }
                     }
                 });
             }
-            document.getElementById('status').innerText = "Base carregada e pronta para pesquisa.";
-            document.getElementById('status').style.color = "green";
-        } catch (error) {
-            console.error("Erro ao carregar a base de dados:", error);
-            document.getElementById('status').innerText = "Erro ao carregar arquivos da base.";
-            document.getElementById('status').style.color = "red";
+        }
+
+        if (temNumero) {
+            let pontoTurf = turf.point([lonCentro, latCentro]);
+            verificarPoligonosIntersectados(pontoTurf);
+        } else {
+            let achouNoOverpass = false;
+            if (overpassData && overpassData.elements && overpassData.elements.length > 0) {
+                overpassData.elements.forEach(el => {
+                    if (el.geometry && el.geometry.length > 1) {
+                        achouNoOverpass = true;
+                        let featureElemento = turf.lineString(el.geometry.map(pt => [pt.lon, pt.lat]));
+                        const linhaNoMapa = L.polyline(el.geometry.map(pt => [pt.lat, pt.lon]), { color: "#ff2222", weight: 5, opacity: 0.85 }).addTo(camadasBusca);
+                        boundsGeral.extend(linhaNoMapa.getBounds());
+                        verificarPoligonosIntersectados(featureElemento);
+                    }
+                });
+            }
+
+            if (!achouNoOverpass && resultadosNominatim && nomeOficial) {
+                let alvosGeograficos = resultadosNominatim.filter(r => r.name === nomeOficial).slice(0, 50);
+                if (alvosGeograficos.length === 0) alvosGeograficos = [resultadosNominatim[0]];
+                alvosGeograficos.forEach(alvo => {
+                    if (alvo.geojson) {
+                        const featureElemento = turf.feature(alvo.geojson);
+                        const linhaNoMapa = L.geoJSON(alvo.geojson, { style: { color: "#ff2222", weight: 5, opacity: 0.85 } }).addTo(camadasBusca);
+                        boundsGeral.extend(linhaNoMapa.getBounds());
+                        verificarPoligonosIntersectados(featureElemento);
+                    }
+                });
+            }
+        }
+
+        if (ubsEncontradasFeatures.length > 0) {
+            let htmlResultado = temNumero ? `📍 <b>Numeração identificada geograficamente!</b><br>Este endereço pertence à área de atendimento da:<br><br>` : `Logradouro identificado! Atravessa a área de abrangência de <b>${ubsEncontradasFeatures.length}</b> UBS(s):<br><br>`;
+            
+            ubsEncontradasFeatures.forEach(feature => {
+                let nomeUbsLimpo = feature.properties.UBS ? feature.properties.UBS.replace(/^RN\s+/i, '').trim() : "Desconhecida";
+                let codigo = feature.properties['Codigo microrregiao'] || feature.properties.codigo_microrregiao || "S/N";
+                let endSeguro = (feature.properties.END || "").replace(/(\r\n|\n|\r)/gm, " ");
+                let horSeguro = (feature.properties.Horario || "").replace(/(\r\n|\n|\r)/gm, " ");
+                let argsCliq = `'${nomeUbsLimpo.replace(/'/g, "\\'")}', '${endSeguro.replace(/'/g, "\\'")}', '${horSeguro.replace(/'/g, "\\'")}'`;
+
+                htmlResultado += `<div class="ubs-item">📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${nomeUbsLimpo} - Cod. Microrregião (<b>${codigo}</b>)</span></div>`;
+                const poliLayer = L.geoJSON(feature, { style: { color: "#10b981", weight: 2.5, fillOpacity: 0.12 } }).addTo(camadasPoligonos);
+                boundsGeral.extend(poliLayer.getBounds());
+
+                try {
+                    let centroid = turf.centroid(feature);
+                    let coords = centroid.geometry.coordinates;
+                    L.marker([coords[1], coords[0]], { icon: L.divIcon({ className: 'rotulo-ubs', html: `<div>UBS ${nomeUbsLimpo.toUpperCase()}</div>`, iconSize: [160, 40], iconAnchor: [80, 20] }), interactive: false }).addTo(camadasPoligonos);
+                } catch (e) {}
+            });
+
+            if (!temNumero && ubsEncontradasFeatures.length > 1) {
+                htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via abrange múltiplas regiões. Para saber a UBS exata, inclua o número do imóvel.</i><br>📍 Quer saber o endereço? clique na UBS</small>`;
+            } else {
+                htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Quer saber o endereço? clique na sua UBS</i></small>`;
+            }
+
+            mostrarResultado(htmlResultado, "sucesso");
+            temNumero ? map.setView([latCentro, lonCentro], 19) : map.fitBounds(boundsGeral, { padding: [30, 30] });
+        } else {
+            mostrarResultado("Endereço localizado, mas não intercepta nenhuma área de UBS cadastrada.", "erro");
+            boundsGeral.isValid() ? map.fitBounds(boundsGeral, { padding: [30, 30] }) : map.setView([latCentro, lonCentro], 15);
         }
     }
 
-    // Função principal de busca
-    async function buscarEndereco() {
-        const input = document.getElementById('endereco').value.trim();
-        const statusDiv = document.getElementById('status');
-
-        if (!input) {
-            alert("Por favor, digite um endereço.");
-            return;
-        }
-
-        statusDiv.innerText = "Buscando localização...";
-        statusDiv.style.color = "blue";
-
-        try {
-            // 1. Busca as coordenadas usando a API do Nominatim (muito mais rápido que varrer GeoJSON)
-            // Adicionando 'Sorocaba' para restringir e melhorar a precisão da busca
-            const query = encodeURIComponent(`${input}, Sorocaba - SP`);
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
-            const resultados = await response.json();
-
-            if (resultados.length === 0) {
-                statusDiv.innerText = "Endereço não encontrado no mapa.";
-                statusDiv.style.color = "red";
-                return;
-            }
-
-            const lat = parseFloat(resultados[0].lat);
-            const lon = parseFloat(resultados[0].lon);
-
-            // 2. Extrai rua e número do input do usuário para montar o Pop-up e buscar a UBS
-            // Presume que o usuário digitou "Rua Nome, Numero"
-            const partesInput = input.split(',');
-            const ruaDigitada = partesInput[0].trim();
-            const numeroDigitado = partesInput.length > 1 ? partesInput[1].trim() : "S/N";
-
-            // Normaliza a rua digitada para buscar no nosso Map
-            const ruaNormalizada = ruaDigitada.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-            
-            // Busca a UBS de forma instantânea na base indexada
-            const ubsEncontrada = baseUBS.get(ruaNormalizada) || "Região de abrangência não encontrada";
-
-            // 3. Atualiza o Mapa (Move o pino e abre o Pop-up com o número)
-            if (marker) {
-                map.removeLayer(marker);
-            }
-
-            marker = L.marker([lat, lon]).addTo(map);
-            map.setView([lat, lon], 17); // Dá zoom no local exato
-
-            // Monta o pop-up com a formatação solicitada
-            const popupContent = `
-                <div style="font-size: 14px;">
-                    <strong>Logradouro:</strong> ${ruaDigitada}, ${numeroDigitado}<br>
-                    <strong>UBS:</strong> ${ubsEncontrada}
-                </div>
-            `;
-            
-            marker.bindPopup(popupContent).openPopup();
-            
-            statusDiv.innerText = "Pesquisa concluída com sucesso!";
-            statusDiv.style.color = "green";
-
-        } catch (error) {
-            console.error("Erro na pesquisa:", error);
-            statusDiv.innerText = "Erro ao realizar a busca. Tente novamente.";
-            statusDiv.style.color = "red";
-        }
+    function mostrarResultado(mensagem, tipo) {
+        const divResultado = document.getElementById('resultado');
+        divResultado.innerHTML = mensagem;
+        divResultado.style.display = 'block';
+        divResultado.className = tipo;
     }
-
-    // Inicia o carregamento ao abrir a página
-    carregarBaseDeDados();
 </script>
-
 </body>
 </html>
