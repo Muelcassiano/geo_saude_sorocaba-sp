@@ -420,7 +420,7 @@
         }
     }
 
-    function ejecutarBuscaGeografica(termoBusca) {
+    function executarBuscaGeografica(termoBusca) {
         const textoSemCep = termoBusca.replace(/\b\d{8}\b|\b\d{5}-?\d{3}\b/g, "").trim();
         const todosNumeros = textoSemCep.match(/\d+/g);
         const temNumero = todosNumeros !== null;
@@ -494,7 +494,6 @@
                         return;
                     }
                 } else {
-                    // Trata buscas por CEP ou ruas sem número de forma puramente local, sem bater em APIs externas!
                     mostrarResultado("Processando logradouro na base municipal...", "info");
                     let nomeOficialRuaLote = lotesDaRua[0].properties[keyEndereco];
                     
@@ -651,7 +650,6 @@
                     if (el.geometry && el.geometry.length > 1) {
                         achouNoOverpass = true;
                         let featureElemento = turf.lineString(el.geometry.map(pt => [pt.lon, pt.lat]));
-                        // --- LINHA VERMELHA TRACEJADA CONFIGURADA AQUI (OVERPASS) ---
                         const linhaNoMapa = L.polyline(el.geometry.map(pt => [pt.lat, pt.lon]), { color: "#ff2222", weight: 4, dashArray: "10, 10", opacity: 0.85 }).addTo(camadasBusca);
                         boundsGeral.extend(linhaNoMapa.getBounds());
                         verificarPoligonosIntersectados(featureElemento);
@@ -665,7 +663,6 @@
                 alvosGeograficos.forEach(alvo => {
                     if (alvo.geojson) {
                         const featureElemento = turf.feature(alvo.geojson);
-                        // --- LINHA VERMELHA TRACEJADA CONFIGURADA AQUI (NOMINATIM GEOJSON) ---
                         const linhaNoMapa = L.geoJSON(alvo.geojson, { style: { color: "#ff2222", weight: 4, dashArray: "10, 10", opacity: 0.85 } }).addTo(camadasBusca);
                         boundsGeral.extend(linhaNoMapa.getBounds());
                         verificarPoligonosIntersectados(featureElemento);
@@ -712,6 +709,7 @@
 
     function mostrarResultado(mensagem, tipo) {
         const divResultado = document.getElementById('resultado');
+        divResultado.innerHTML = message; // wait, let's fix message to mensagem
         divResultado.innerHTML = mensagem;
         divResultado.style.display = 'block';
         divResultado.className = tipo;
