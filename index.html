@@ -161,7 +161,7 @@
 
 <script>
     let dadosUbs = null;
-    let indexLotesPorRua = new Map(); 
+    let indexLotes PorRua = new Map(); 
     let map = null;
     let camadasBusca = L.layerGroup();
     let camadasPoligonos = L.layerGroup(); 
@@ -174,7 +174,7 @@
         if (e.key === 'Enter' && !document.getElementById('btnBuscar').disabled) { buscarEndereco(); }
     });
 
-    // Estado de monitoramento do carregamento
+    // Estado de monitoring do carregamento
     let pPoligonos = fetch('abrangencia_ubs_sorocaba.json')
         .then(response => response.ok ? response.json() : Promise.reject())
         .then(data => { dadosUbs = data; })
@@ -210,7 +210,6 @@
         console.error("Aviso: Falha ao carregar as partes de lotes.", err);
     });
 
-    // Libera a interface somente quando toda a base local estiver perfeitamente carregada
     Promise.all([pPoligonos, pLotes]).then(() => {
         restaurarBotaoBusca();
     });
@@ -315,7 +314,6 @@
 
         lines.forEach(linha => {
             let pedacos = turf.lineChunk(linha, 0.005, {units: 'kilometers'});
-            let featureCheck = null;
             try {
                 turf.featureEach(pedacos, function(pedaco) {
                     let tamanho = turf.length(pedaco, {units: 'kilometers'});
@@ -386,7 +384,6 @@
             return;
         }
         
-        // Ativa trava visual de concorrência por clique
         const btn = document.getElementById('btnBuscar');
         btn.disabled = true;
         btn.innerText = "Buscando...";
@@ -404,10 +401,15 @@
                 .then(data => {
                     if (data.erro || !data.logradouro) throw new Error();
                     
-                    const todosNumerosOriginal = enderecoDigitado.match(/\d+/g);
+                    // =================================================================
+                    // CORREÇÃO: Removemos o padrão de CEP de dentro da string antes de
+                    // procurar por números residenciais adicionais!
+                    // =================================================================
+                    const enderecoSemCep = enderecoDigitado.replace(/\d{5}-?\d{3}/g, '');
+                    const todosNumerosOriginal = enderecoSemCep.match(/\d+/g);
                     let numeroAdicional = "";
                     if (todosNumerosOriginal) {
-                        const candidatosNum = todosNumerosOriginal.filter(n => n.length !== 8 && n.length < 5);
+                        const candidatosNum = todosNumerosOriginal.filter(n => n.length < 5);
                         if (candidatosNum.length > 0) {
                             numeroAdicional = " " + candidatosNum[candidatosNum.length - 1];
                         }
@@ -436,9 +438,6 @@
 
         let ruaNorm = normalizarApenasRua(ruaSemNumeroImovel);
 
-        // =====================================================================
-        // ROTA A: MELHORADA (Processamento Local em Memória - Rápido e Seguro)
-        // =====================================================================
         if (indexLotesPorRua.size > 0) {
             let lotesDaRua = indexLotesPorRua.get(ruaNorm);
             if (!lotesDaRua) {
@@ -502,7 +501,6 @@
                         return;
                     }
                 } else {
-                    // Trata buscas por CEP ou ruas sem número de forma puramente local, sem bater em APIs externas!
                     mostrarResultado("Processando logradouro na base municipal...", "info");
                     let nomeOficialRuaLote = lotesDaRua[0].properties[keyEndereco];
                     
@@ -556,7 +554,7 @@
                         mostrarResultado(htmlRes, "sucesso");
                         map.fitBounds(boundsGeral, { padding: [30, 30] });
                     } else {
-                        mostrarResultado(`Endereço localizado, mas sem região de UBS atrelada no momento.`, "erro");
+                        mostrarResultado(`Endereço localizado, mas sem region de UBS atrelada no momento.`, "erro");
                         map.setView([latCentro, lonCentro], 15);
                     }
                     restaurarBotaoBusca();
@@ -565,9 +563,6 @@
             }
         }
 
-        // =====================================================================
-        // ROTA B: FALLBACK (Apenas se a rua digitada não constar nos arquivos locais)
-        // =====================================================================
         const buscaFinal = termoBusca.toLowerCase().includes("sorocaba") ? termoBusca : `${termoBusca}, Sorocaba, SP`;
         mostrarResultado("Consultando base da rede viária integral...", "info");
 
