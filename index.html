@@ -25,10 +25,8 @@
             border-radius: 12px; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
-        h2 { margin-top: 0; color: #1e293b; font-size: 24px;
-        }
-        p { color: #64748b; font-size: 15px; margin-bottom: 20px;
-        }
+        h2 { margin-top: 0; color: #1e293b; font-size: 24px; }
+        p { color: #64748b; font-size: 15px; margin-bottom: 20px; }
         
         .busca-box { 
             display: flex;
@@ -44,8 +42,7 @@
             outline: none;
             transition: border-color 0.2s;
         }
-        input[type="text"]:focus { border-color: #3b82f6;
-        }
+        input[type="text"]:focus { border-color: #3b82f6; }
         button { 
             padding: 14px 28px;
             background-color: #94a3b8; 
@@ -80,12 +77,9 @@
             word-wrap: break-word;
         }
         
-        .sucesso { background-color: #ecfdf5;
-            color: #065f46; border: 1px solid #a7f3d0; }
-        .erro { background-color: #fef2f2; color: #991b1b;
-            border: 1px solid #fca5a5; }
-        .info { background-color: #eff6ff; color: #1e40af;
-            border: 1px solid #bfdbfe; }
+        .sucesso { background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .erro { background-color: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+        .info { background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
 
         .rotulo-ubs {
             background: none;
@@ -102,16 +96,14 @@
                 0px -1px 0 #FFF, 0px 1px 0 #FFF;
         }
 
-        .ubs-item { margin-bottom: 8px;
-        }
+        .ubs-item { margin-bottom: 8px; }
         .ubs-clickable {
             cursor: pointer;
             text-decoration: underline;
             color: #065f46;
             transition: color 0.2s;
         }
-        .ubs-clickable:hover { color: #047857;
-        }
+        .ubs-clickable:hover { color: #047857; }
         
         .modal-overlay {
             position: fixed;
@@ -133,26 +125,17 @@
             cursor: pointer; font-size: 22px; font-weight: bold; color: #94a3b8;
             transition: color 0.2s;
         }
-        .modal-close:hover { color: #ef4444;
-        }
-        .modal-titulo { font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 10px;
-            margin-top: 0;}
-        .modal-endereco { margin-bottom: 15px;
-        }
-        .modal-horario { font-size: 15px;
-        }
+        .modal-close:hover { color: #ef4444; }
+        .modal-titulo { font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 10px; margin-top: 0;}
+        .modal-endereco { margin-bottom: 15px; }
+        .modal-horario { font-size: 15px; }
 
         @media (max-width: 600px) {
-            body { padding: 10px;
-            }
-            .container { padding: 15px;
-            }
-            .busca-box { flex-direction: column;
-            }
-            button { width: 100%;
-            }
-            h2 { font-size: 20px;
-            }
+            body { padding: 10px; }
+            .container { padding: 15px; }
+            .busca-box { flex-direction: column; }
+            button { width: 100%; }
+            h2 { font-size: 20px; }
         }
     </style>
 </head>
@@ -173,7 +156,6 @@
 
 <div id="modal-ubs" class="modal-overlay" onclick="fecharModalFora(event)">
     <div class="modal-content">
-       
         <span class="modal-close" onclick="fecharPopupUbs()">×</span>
         <h3 id="modal-titulo" class="modal-titulo"></h3>
         <div id="modal-endereco" class="modal-endereco"></div>
@@ -195,7 +177,6 @@
         if (e.key === 'Enter' && !document.getElementById('btnBuscar').disabled) { buscarEndereco(); }
     });
 
-    // Estado de monitoramento do carregamento
     let pPoligonos = fetch('abrangencia_ubs_sorocaba.json')
         .then(response => response.ok ? response.json() : Promise.reject())
         .then(data => { dadosUbs = data; })
@@ -211,12 +192,10 @@
     .then(parts => {
         let totalLotes = 0;
         parts.forEach(part => {
- 
             if (part && part.features) {
                 part.features.forEach(feature => {
                     let nomeRuaOriginal = feature.properties[keyEndereco];
                     if (nomeRuaOriginal) {
-                      
                         let ruaNorm = normalizarApenasRua(nomeRuaOriginal);
                         if (!indexLotesPorRua.has(ruaNorm)) {
                             indexLotesPorRua.set(ruaNorm, []);
@@ -233,7 +212,6 @@
         console.error("Aviso: Falha ao carregar as partes de lotes.", err);
     });
 
-    // Libera a interface somente quando toda a base local estiver perfeitamente carregada
     Promise.all([pPoligonos, pLotes]).then(() => {
         restaurarBotaoBusca();
     });
@@ -277,8 +255,8 @@
         }
     }
 
-    function abrirPopupUbs(nome, endereco, horario) {
-        document.getElementById('modal-titulo').innerText = `UBS ${nome}:`;
+    function abrirPopupUbs(name, endereco, horario) {
+        document.getElementById('modal-titulo').innerText = `UBS ${name}:`;
         document.getElementById('modal-endereco').innerHTML = formatarEndereco(endereco);
         document.getElementById('modal-horario').innerHTML = formatarHorario(horario);
         document.getElementById('modal-ubs').style.display = 'flex';
@@ -329,15 +307,13 @@
     function calcularExtensaoDentro(linhaString, poligono) {
         let comprimentoDentro = 0;
         let lines = [];
-        if (linhaString.geometry.type === "LineString") { lines.push(linhaString);
-        } 
+        if (linhaString.geometry.type === "LineString") { lines.push(linhaString); } 
         else if (linhaString.geometry.type === "MultiLineString") {
             linhaString.geometry.coordinates.forEach(coords => lines.push(turf.lineString(coords)));
         } else { return 999; }
 
         lines.forEach(linha => {
             let pedacos = turf.lineChunk(linha, 0.005, {units: 'kilometers'});
-            let featureCheck = null;
             try {
                 turf.featureEach(pedacos, function(pedaco) {
                     let tamanho = turf.length(pedaco, {units: 'kilometers'});
@@ -407,7 +383,6 @@
             return;
         }
         
-        // Ativa trava visual de concorrência por clique
         const btn = document.getElementById('btnBuscar');
         btn.disabled = true;
         btn.innerText = "Buscando...";
@@ -425,7 +400,6 @@
                 .then(data => {
                     if (data.erro || !data.logradouro) throw new Error();
                     
-                    // MELHORIA IMPLEMENTADA: Remove o formato do CEP (com ou sem traço) antes de checar números residenciais adicionais
                     const enderecoSemCep = enderecoDigitado.replace(/\b\d{5}-\d{3}\b|\b\d{8}\b/g, '');
                     const todosNumerosOriginal = enderecoSemCep.match(/\d+/g);
                     let numeroAdicional = "";
@@ -438,7 +412,10 @@
         
                     executarBuscaGeografica(data.logradouro + numeroAdicional);
                 }).catch(() => {
-                    executarBuscaGeografica(enderecoDigitado);
+                    // CAMADA DE PROTEÇÃO 1: Evita que falhas ou atrasos do ViaCEP enviem CEPs puros para a adivinhação do Nominatim
+                    let cepFormatado = cepLimpo.substring(0, 5) + "-" + cepLimpo.substring(5);
+                    mostrarResultado(`Nenhum resultado para o CEP "${cepFormatado}". Você possui o nome do logradouro?`, "erro");
+                    restaurarBotaoBusca();
                 });
         } else {
             executarBuscaGeografica(enderecoDigitado);
@@ -458,8 +435,9 @@
         }
 
         let ruaNorm = normalizarApenasRua(ruaSemNumeroImovel);
+
         // =====================================================================
-        // ROTA A: MELHORADA (Processamento Local em Memória - Rápido e Seguro)
+        // ROTA A: Processamento Local em Memória
         // =====================================================================
         if (indexLotesPorRua.size > 0) {
             let lotesDaRua = indexLotesPorRua.get(ruaNorm);
@@ -491,10 +469,8 @@
                             turf.featureEach(dadosUbs, function (ubsPoligono) {
                                 let nomePoligonoLimpo = ubsPoligono.properties.UBS ? ubsPoligono.properties.UBS.replace(/^RN\s+/i, '').trim() : "";
                                 if (nomePoligonoLimpo.toLowerCase() === ubsLimpa.toLowerCase()) {
-                     
                                     let codigo = ubsPoligono.properties['Codigo microrregiao'] || ubsPoligono.properties.codigo_microrregiao || "S/N";
                                     let endSeguro = (ubsPoligono.properties.END || "").replace(/(\r\n|\n|\r)/gm, " ");
-                                  
                                     let horSeguro = (ubsPoligono.properties.Horario || "").replace(/(\r\n|\n|\r)/gm, " ");
                                     let argsCliq = `'${ubsLimpa.replace(/'/g, "\\'")}', '${endSeguro.replace(/'/g, "\\'")}', '${horSeguro.replace(/'/g, "\\'")}'`;
 
@@ -505,7 +481,6 @@
                                         let coordsC = centroid.geometry.coordinates;
                                         L.marker([coordsC[1], coordsC[0]], {
                                             icon: L.divIcon({ className: 'rotulo-ubs', html: `<div>UBS ${ubsLimpa.toUpperCase()}</div>`, iconSize: [160, 40], iconAnchor: [80, 20] }),
-                                     
                                             interactive: false
                                         }).addTo(camadasPoligonos);
                                     } catch (e) {}
@@ -522,7 +497,6 @@
                         return;
                     }
                 } else {
-                    // Trata buscas por CEP ou ruas sem número de forma puramente local, sem bater em APIs externas!
                     mostrarResultado("Processando logradouro na base municipal...", "info");
                     let nomeOficialRuaLote = lotesDaRua[0].properties[keyEndereco];
                     
@@ -545,11 +519,9 @@
                         turf.featureEach(dadosUbs, function (ubsPoligono) {
                             let nomePoligonoLimpo = ubsPoligono.properties.UBS ? ubsPoligono.properties.UBS.replace(/^RN\s+/i, '').trim() : "";
                             if (ubsSet.has(nomePoligonoLimpo.toLowerCase())) {
-                               
                                 let codigo = ubsPoligono.properties['Codigo microrregiao'] || ubsPoligono.properties.codigo_microrregiao || "S/N";
                                 let endSeguro = (ubsPoligono.properties.END || "").replace(/(\r\n|\n|\r)/gm, " ");
                                 let horSeguro = (ubsPoligono.properties.Horario || "").replace(/(\r\n|\n|\r)/gm, " ");
-             
                                 let argsCliq = `'${nomePoligonoLimpo.replace(/'/g, "\\'")}', '${endSeguro.replace(/'/g, "\\'")}', '${horSeguro.replace(/'/g, "\\'")}'`;
 
                                 htmlRes += `<div class="ubs-item">📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${nomePoligonoLimpo} - Cod. Microrregião (<b>${codigo}</b>)</span></div>`;
@@ -583,7 +555,7 @@
         }
 
         // =====================================================================
-        // ROTA B: FALLBACK (Apenas se a rua digitada não constar nos arquivos locais)
+        // ROTA B: FALLBACK via Nominatim
         // =====================================================================
         const buscaFinal = termoBusca.toLowerCase().includes("sorocaba") ? termoBusca : `${termoBusca}, Sorocaba, SP`;
         mostrarResultado("Consultando base da rede viária integral...", "info");
@@ -594,8 +566,26 @@
             .then(resultados => {
                 if (resultados.length === 0) throw new Error("Endereço não encontrado na base de dados global.");
 
+                // CAMADA DE PROTEÇÃO 2: Intercepta o falso positivo da "Rua Esperança" em buscas que iniciaram por CEPs fantasmas
+                let primeiroResultado = resultados[0];
+                let displayName = primeiroResultado.display_name ? primeiroResultado.display_name.toUpperCase() : "";
+                let termoUpper = termoBusca.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                
+                if (displayName.includes("ESPERANCA") && !termoUpper.includes("ESPERANCA")) {
+                    let temCepNaBusca = /\d{5}-?\d{3}/.test(termoBusca) || /\d{8}/.test(termoBusca);
+                    if (temCepNaBusca) {
+                        let matchCep = termoBusca.match(/\d{5}-?\d{3}/) || termoBusca.match(/\d{8}/);
+                        let cepExibir = matchCep ? matchCep[0] : "informado";
+                        if (!cepExibir.includes("-") && cepExibir.length === 8) {
+                            cepExibir = cepExibir.substring(0, 5) + "-" + cepExibir.substring(5);
+                        }
+                        throw new Error(`Nenhum resultado para o CEP "${cepExibir}". Você possui o nome do logradouro?`);
+                    } else {
+                        throw new Error("Endereço não encontrado de forma precisa na região.");
+                    }
+                }
+
                 let viasEncontradas = resultados.filter(r => r.class === 'highway' || r.type === 'residential');
-      
                 let nomeOficial = viasEncontradas.length > 0 && viasEncontradas[0].address && viasEncontradas[0].address.road 
                                   ? viasEncontradas[0].address.road 
                                   : (resultados[0].address && resultados[0].address.road ? resultados[0].address.road : (viasEncontradas.length > 0 ? viasEncontradas[0].name : resultados[0].name));
@@ -612,7 +602,7 @@
                         .then(res => res.ok ? res.json() : { elements: [] })
                         .then(overpassData => {
                             renderizarMapaLinhaUbs(latCentro, lonCentro, false, popupHTML, overpassData, resultados, nomeOficial);
-                             restaurarBotaoBusca();
+                            restaurarBotaoBusca();
                         })
                         .catch(() => {
                             renderizarMapaLinhaUbs(latCentro, lonCentro, false, popupHTML, null, resultados, nomeOficial);
@@ -621,7 +611,11 @@
                 }
             })
             .catch(error => {
-                mostrarResultado(`Ops! Ocorreu um erro: ${error.message}`, "erro");
+                if (error.message.includes("Você possui o nome do logradouro?")) {
+                    mostrarResultado(error.message, "erro");
+                } else {
+                    mostrarResultado(`Ops! Ocorreu um erro: ${error.message}`, "erro");
+                }
                 restaurarBotaoBusca();
             });
     }
@@ -634,15 +628,16 @@
 
         L.marker([latCentro, lonCentro]).addTo(camadasBusca).bindPopup(popupHtmlText).openPopup();
         boundsGeral.extend([latCentro, lonCentro]);
+
         function verificarPoligonosIntersectados(featureElemento) {
             if (dadosUbs) {
                 turf.featureEach(dadosUbs, function (ubsPoligono) {
                     if (turf.booleanIntersects(featureElemento, ubsPoligono)) {
                         let extTotal = featureElemento.geometry.type.includes("Line") ? turf.length(featureElemento, {units: 'kilometers'}) * 1000 : 999;
-                         let extDentro = calcularExtensaoDentro(featureElemento, ubsPoligono);
+                        let extDentro = calcularExtensaoDentro(featureElemento, ubsPoligono);
                         if (extDentro >= 15 || extTotal <= 15) {
                             let nomeUbs = ubsPoligono.properties.UBS;
-                             if (nomeUbs && !ubsNomes.has(nomeUbs)) { ubsNomes.add(nomeUbs); ubsEncontradasFeatures.push(ubsPoligono); }
+                            if (nomeUbs && !ubsNomes.has(nomeUbs)) { ubsNomes.add(nomeUbs); ubsEncontradasFeatures.push(ubsPoligono); }
                         }
                     }
                 });
@@ -662,7 +657,7 @@
                         const linhaNoMapa = L.polyline(el.geometry.map(pt => [pt.lat, pt.lon]), { color: "#ff2222", weight: 5, opacity: 0.85 }).addTo(camadasBusca);
                         boundsGeral.extend(linhaNoMapa.getBounds());
                         verificarPoligonosIntersectados(featureElemento);
-                     }
+                    }
                 });
             }
 
@@ -673,7 +668,7 @@
                     if (alvo.geojson) {
                         const featureElemento = turf.feature(alvo.geojson);
                         const linhaNoMapa = L.geoJSON(alvo.geojson, { style: { color: "#ff2222", weight: 5, opacity: 0.85 } }).addTo(camadasBusca);
-                         boundsGeral.extend(linhaNoMapa.getBounds());
+                        boundsGeral.extend(linhaNoMapa.getBounds());
                         verificarPoligonosIntersectados(featureElemento);
                     }
                 });
@@ -692,7 +687,7 @@
 
                 htmlResultado += `<div class="ubs-item">📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${nomeUbsLimpo} - Cod. Microrregião (<b>${codigo}</b>)</span></div>`;
                 const poliLayer = L.geoJSON(feature, { style: { color: "#10b981", weight: 2.5, fillOpacity: 0.12 } }).addTo(camadasPoligonos);
-                 boundsGeral.extend(poliLayer.getBounds());
+                boundsGeral.extend(poliLayer.getBounds());
 
                 try {
                     let centroid = turf.centroid(feature);
@@ -701,9 +696,9 @@
                 } catch (e) {}
             });
             if (!temNumero && ubsEncontradasFeatures.length > 1) {
-                htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via abrange múltiplas regiões.<br>Para saber a UBS exata, inclua o número do imóvel.</i><br>📍 Quer saber o endereço? clique na UBS</small>`;
+                htmlResultado += `<br><small style=\"color:#64748b; font-weight:normal;\"><i>Nota: Esta via abrange múltiplas regiões.<br>Para saber a UBS exata, inclua o número do imóvel.</i><br>📍 Quer saber o endereço? clique na UBS</small>`;
             } else {
-                htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Quer saber o endereço? clique na sua UBS</i></small>`;
+                htmlResultado += `<br><small style=\"color:#64748b; font-weight:normal;\"><i>Nota: Quer saber o endereço? clique na sua UBS</i></small>`;
             }
 
             mostrarResultado(htmlResultado, "sucesso");
@@ -716,7 +711,7 @@
 
     function mostrarResultado(mensagem, tipo) {
         const divResultado = document.getElementById('resultado');
-        divResultado.innerHTML = mensagem;
+        divResultado.innerHTML = message;
         divResultado.style.display = 'block';
         divResultado.className = tipo;
     }
