@@ -217,6 +217,7 @@
     });
 
     function normalizarApenasRua(texto) {
+        // Ignora hífens, vírgulas e números para indexação correta
         let t = texto.replace(/\d+/g, '').replace(/[,-]/g, ' ').trim();
         t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
         t = t.replace(/\bAV\b/g, 'AVENIDA').replace(/\bR\b/g, 'RUA').replace(/\bSTA\b/g, 'SANTA').replace(/\bSTO\b/g, 'SANTO').replace(/\bS\b/g, 'SAO').replace(/\bDR\b/g, 'DOUTOR').replace(/\bPROF\b/g, 'PROFESSOR');
@@ -392,16 +393,30 @@
         camadasBusca.clearLayers();
         camadasPoligonos.clearLayers();
 
-        const cepLimpo = enderecoDigitado.replace(/\D/g, '');
-        if (cepLimpo.length === 8) {
+        let cepParaBusca = null;
+        const cepMatch = enderecoDigitado.match(/\b\d{5}-?\d{3}\b/);
+        
+        if (cepMatch) {
+            cepParaBusca = cepMatch[0].replace(/\D/g, '');
+        } else {
+            const apenasNumeros = enderecoDigitado.replace(/\D/g, '');
+            if (apenasNumeros.length === 8 && enderecoDigitado.length < 15 && !/[a-zA-Z]/.test(enderecoDigitado)) {
+                cepParaBusca = apenasNumeros;
+            }
+        }
+
+        if (cepParaBusca && cepParaBusca.length === 8) {
             mostrarResultado("Buscando logradouro via CEP...", "info");
-            fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`)
+            fetch(`https://viacep.com.br/ws/${cepParaBusca}/json/`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.erro || !data.logradouro) throw new Error();
+                    if (data.erro || !data.logradouro) {
+                        let cepFormatado = cepParaBusca.substring(0, 5) + "-" + cepParaBusca.substring(5);
+                        throw new Error(`Nenhum resultado para o CEP "${cepFormatado}". Você possui o nome do logradouro?`);
+                    }
                     
-                    const enderecoSemCep = enderecoDigitado.replace(/\b\d{5}-\d{3}\b|\b\d{8}\b/g, '');
-                    const todosNumerosOriginal = enderecoSemCep.match(/\d+/g);
+                    const strSemCep = enderecoDigitado.replace(new RegExp(cepMatch ? cepMatch[0] : cepParaBusca, 'g'), '');
+                    const todosNumerosOriginal = strSemCep.match(/\d+/g);
                     let numeroAdicional = "";
                     if (todosNumerosOriginal) {
                         const candidatosNum = todosNumerosOriginal.filter(n => n.length !== 8 && n.length < 5);
@@ -411,9 +426,13 @@
                     }
         
                     executarBuscaGeografica(data.logradouro + numeroAdicional);
-                }).catch(() => {
-                    let cepFormatado = cepLimpo.substring(0, 5) + "-" + cepLimpo.substring(5);
-                    mostrarResultado(`Nenhum resultado para o CEP "${cepFormatado}". Você possui o nome do logradouro?`, "erro");
+                }).catch((error) => {
+                    let msg = error.message;
+                    if (!msg || msg === "Failed to fetch") {
+                        let cepFormatado = cepParaBusca.substring(0, 5) + "-" + cepParaBusca.substring(5);
+                        msg = `Nenhum resultado para o CEP "${cepFormatado}". Você possui o nome do logradouro?`;
+                    }
+                    mostrarResultado(msg, "erro");
                     restaurarBotaoBusca();
                 });
         } else {
@@ -421,7 +440,7 @@
         }
     }
 
-    function ejecutarBuscaGeografica(termoBusca) {
+    function executarBuscaGeografica(termoBusca) {
         const textoSemCep = termoBusca.replace(/\b\d{8}\b|\b\d{5}-?\d{3}\b/g, "").trim();
         const todosNumeros = textoSemCep.match(/\d+/g);
         const temNumero = todosNumeros !== null;
@@ -463,10 +482,10 @@
                         initMap(latCentro, lonCentro);
                         L.marker([latCentro, lonCentro]).addTo(camadasBusca).bindPopup(popupHTML).openPopup();
                         if (nomeDaUbsAtribuidaNoLote && dadosUbs) {
-                            let ubsLimpa = nomeDaUbsAtribuidaNoLote.replace(/^RN\s+/i, '').trim();
+                            let ubsLimpa = nomeDaUbsAtribuidaNoLote.trim();
                             let htmlRes = `📍 <b>Localização e Numeração identificadas!</b><br>Este imóvel é atendido pela:<br><br>`;
                             turf.featureEach(dadosUbs, function (ubsPoligono) {
-                                let nomePoligonoLimpo = ubsPoligono.properties.UBS ? ubsPoligono.properties.UBS.replace(/^RN\s+/i, '').trim() : "";
+                                let nomePoligonoLimpo = ubsPoligono.properties.UBS ? ubsPoligono.properties.UBS.trim() : "";
                                 if (nomePoligonoLimpo.toLowerCase() === ubsLimpa.toLowerCase()) {
                                     let codigo = ubsPoligono.properties['Codigo microrregiao'] || ubsPoligono.properties.codigo_microrregiao || "S/N";
                                     let endSeguro = (ubsPoligono.properties.END || "").replace(/(\r\n|\n|\r)/gm, " ");
@@ -502,7 +521,7 @@
                     let ubsSet = new Set();
                     lotesDaRua.forEach(l => {
                         let ubsL = l.properties[keyUbsLote];
-                        if (ubsL) ubsSet.add(ubsL.replace(/^RN\s+/i, '').trim().toLowerCase());
+                        if (ubsL) ubsSet.add(ubsL.trim().toLowerCase());
                     });
                     let middleLote = lotesDaRua[Math.floor(lotesDaRua.length / 2)];
                     let coords = getSafeCoord(middleLote);
@@ -516,7 +535,7 @@
                         let boundsGeral = L.latLngBounds();
                         boundsGeral.extend([latCentro, lonCentro]);
                         turf.featureEach(dadosUbs, function (ubsPoligono) {
-                            let nomePoligonoLimpo = ubsPoligono.properties.UBS ? ubsPoligono.properties.UBS.replace(/^RN\s+/i, '').trim() : "";
+                            let nomePoligonoLimpo = ubsPoligono.properties.UBS ? ubsPoligono.properties.UBS.trim() : "";
                             if (ubsSet.has(nomePoligonoLimpo.toLowerCase())) {
                                 let codigo = ubsPoligono.properties['Codigo microrregiao'] || ubsPoligono.properties.codigo_microrregiao || "S/N";
                                 let endSeguro = (ubsPoligono.properties.END || "").replace(/(\r\n|\n|\r)/gm, " ");
@@ -567,19 +586,19 @@
 
                 let primeiroResultado = resultados[0];
                 let displayName = primeiroResultado.display_name ? primeiroResultado.display_name.toUpperCase() : "";
-                let termoUpper = termoBusca.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-                
-                if (displayName.includes("ESPERANCA") && !termoUpper.includes("ESPERANCA")) {
-                    let temCepNaBusca = /\d{5}-?\d{3}/.test(termoBusca) || /\d{8}/.test(termoBusca);
-                    if (temCepNaBusca) {
-                        let matchCep = termoBusca.match(/\d{5}-?\d{3}/) || termoBusca.match(/\d{8}/);
-                        let cepExibir = matchCep ? matchCep[0] : "informado";
-                        if (!cepExibir.includes("-") && cepExibir.length === 8) {
-                            cepExibir = cepExibir.substring(0, 5) + "-" + cepExibir.substring(5);
+                let inputOriginal = document.getElementById('endereco').value.trim().toUpperCase();
+
+                // Tratamento específico de CEPs direcionando incorretamente para RUA ESPERANCA/JD
+                if (displayName.includes("ESPERANCA") || displayName.includes("ESPERANÇA")) {
+                    if (!inputOriginal.includes("ESPERANCA") && !inputOriginal.includes("ESPERANÇA")) {
+                        let cepMatchErro = inputOriginal.match(/\d{5}-?\d{3}/) || inputOriginal.match(/\b\d{8}\b/);
+                        if (cepMatchErro) {
+                            let cepStr = cepMatchErro[0].replace("-", "");
+                            let cepFormatado = cepStr.substring(0, 5) + "-" + cepStr.substring(5);
+                            throw new Error(`Nenhum resultado para o CEP "${cepFormatado}". Você possui o nome do logradouro?`);
+                        } else {
+                            throw new Error("Endereço não encontrado de forma precisa na região.");
                         }
-                        throw new Error(`Nenhum resultado para o CEP "${cepExibir}". Você possui o nome do logradouro?`);
-                    } else {
-                        throw new Error("Endereço não encontrado de forma precisa na região.");
                     }
                 }
 
@@ -677,7 +696,7 @@
             let htmlResultado = temNumero ? `📍 <b>Numeração identificada geograficamente!</b><br>Este endereço pertence à área de atendimento da:<br><br>` : `Logradouro identificado!<br>Atravessa a área de abrangência de <b>${ubsEncontradasFeatures.length}</b> UBS(s):<br><br>`;
             
             ubsEncontradasFeatures.forEach(feature => {
-                let nomeUbsLimpo = feature.properties.UBS ? feature.properties.UBS.replace(/^RN\s+/i, '').trim() : "Desconhecida";
+                let nomeUbsLimpo = feature.properties.UBS ? feature.properties.UBS.trim() : "Desconhecida";
                 let codigo = feature.properties['Codigo microrregiao'] || feature.properties.codigo_microrregiao || "S/N";
                 let endSeguro = (feature.properties.END || "").replace(/(\r\n|\n|\r)/gm, " ");
                 let horSeguro = (feature.properties.Horario || "").replace(/(\r\n|\n|\r)/gm, " ");
@@ -694,9 +713,9 @@
                 } catch (e) {}
             });
             if (!temNumero && ubsEncontradasFeatures.length > 1) {
-                htmlResultado += `<br><small style=\"color:#64748b; font-weight:normal;\"><i>Nota: Esta via abrange múltiplas regiões.<br>Para saber a UBS exata, inclua o número do imóvel.</i><br>📍 Quer saber o endereço? clique na UBS</small>`;
+                htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via abrange múltiplas regiões.<br>Para saber a UBS exata, inclua o número do imóvel.</i><br>📍 Quer saber o endereço? clique na UBS</small>`;
             } else {
-                htmlResultado += `<br><small style=\"color:#64748b; font-weight:normal;\"><i>Nota: Quer saber o endereço? clique na sua UBS</i></small>`;
+                htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Quer saber o endereço? clique na sua UBS</i></small>`;
             }
 
             mostrarResultado(htmlResultado, "sucesso");
