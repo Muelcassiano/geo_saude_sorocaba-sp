@@ -182,7 +182,7 @@
         .then(data => { dadosUbs = data; })
         .catch(() => mostrarResultado("Erro ao carregar banco de dados dos polígonos das UBS.", "erro"));
 
-    console.log("Iniciando indexação paralela das partes de lotes (Otimização ativada)...");
+    console.log("Iniciando indexação paralela das partes de lotes...");
     let pLotes = Promise.all([
         fetch('lotes_sorocaba_pontos/lotes_sorocaba_pontos_part1.json').then(r => r.ok ? r.json() : Promise.reject()),
         fetch('lotes_sorocaba_pontos/lotes_sorocaba_pontos_part2.json').then(r => r.ok ? r.json() : Promise.reject()),
@@ -412,7 +412,6 @@
         
                     executarBuscaGeografica(data.logradouro + numeroAdicional);
                 }).catch(() => {
-                    // CAMADA DE PROTEÇÃO 1: Evita que falhas ou atrasos do ViaCEP enviem CEPs puros para a adivinhação do Nominatim
                     let cepFormatado = cepLimpo.substring(0, 5) + "-" + cepLimpo.substring(5);
                     mostrarResultado(`Nenhum resultado para o CEP "${cepFormatado}". Você possui o nome do logradouro?`, "erro");
                     restaurarBotaoBusca();
@@ -422,7 +421,7 @@
         }
     }
 
-    function executarBuscaGeografica(termoBusca) {
+    function ejecutarBuscaGeografica(termoBusca) {
         const textoSemCep = termoBusca.replace(/\b\d{8}\b|\b\d{5}-?\d{3}\b/g, "").trim();
         const todosNumeros = textoSemCep.match(/\d+/g);
         const temNumero = todosNumeros !== null;
@@ -566,7 +565,6 @@
             .then(resultados => {
                 if (resultados.length === 0) throw new Error("Endereço não encontrado na base de dados global.");
 
-                // CAMADA DE PROTEÇÃO 2: Intercepta o falso positivo da "Rua Esperança" em buscas que iniciaram por CEPs fantasmas
                 let primeiroResultado = resultados[0];
                 let displayName = primeiroResultado.display_name ? primeiroResultado.display_name.toUpperCase() : "";
                 let termoUpper = termoBusca.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
@@ -711,7 +709,7 @@
 
     function mostrarResultado(mensagem, tipo) {
         const divResultado = document.getElementById('resultado');
-        divResultado.innerHTML = message;
+        divResultado.innerHTML = mensagem;
         divResultado.style.display = 'block';
         divResultado.className = tipo;
     }
