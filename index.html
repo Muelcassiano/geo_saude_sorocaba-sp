@@ -17,7 +17,8 @@
             --text-heading: #1e293b;
             --text-muted: #64748b;
             --border-color: #cbd5e1;
-            --header-bg: #00529b;
+            /* Atualizado para degradê suave inspirado na referência */
+            --header-bg: linear-gradient(135deg, #003a70 0%, #00529b 50%, #003a70 100%);
             --header-text: #ffffff;
             --input-bg: #ffffff;
             --input-text: #333333;
@@ -35,7 +36,8 @@
             --text-heading: #f8fafc;
             --text-muted: #94a3b8;
             --border-color: #1e293b;
-            --header-bg: #080d1a;
+            /* Atualizado para degradê suave escuro inspirado na referência */
+            --header-bg: linear-gradient(135deg, #060b17 0%, #0d1933 50%, #060b17 100%);
             --header-text: #ffffff;
             --input-bg: #0b1329;
             --input-text: #f8fafc;
@@ -61,18 +63,19 @@
 
         /* BANNER DO TOPO / HEADER */
         .header-banner {
-            background-color: var(--header-bg);
+            background: var(--header-bg); /* Modificado de background-color para background suportar gradiente */
             color: var(--header-text);
-            padding: 10px 15px; /* Reduzido para não ficar uma tarja larga no celular */
+            padding: 15px 15px; 
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             margin-bottom: 25px;
             width: 100%;
+            position: relative; /* Adicionado para base de ancoragem do botão tema no Desktop */
         }
 
         .header-container {
             max-width: 1100px;
             margin: 0 auto;
-            position: relative;
+            /* position: relative removido para liberar o botão de tema */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -83,7 +86,6 @@
             background: var(--toggle-bg);
             border: 2px solid rgba(255,255,255,0.3);
             border-radius: 50%;
-            /* Tamanho reduzido para dar destaque às logos no mobile */
             width: 32px;
             height: 32px;
             display: flex;
@@ -126,7 +128,7 @@
         .logo-img {
             max-width: 100%;
             max-height: 100%;
-            object-fit: contain; /* Garante que a imagem caiba sem esticar */
+            object-fit: contain; 
         }
 
         .header-titles {
@@ -279,25 +281,26 @@
         /* REGRAS RESPONSIVAS DE DESKTOP E CELULAR */
         @media (min-width: 769px) {
             .header-container {
+                max-width: 850px; /* Alinhado estritamente com o container principal para juntar as logos */
                 flex-direction: row;
                 justify-content: center;
             }
             .theme-toggle-btn {
                 position: absolute;
-                right: 0;
-                top: 50%;
-                transform: translateY(-50%);
+                right: 25px; /* Jogado para o canto superior direito da tela inteira */
+                top: 20px;
+                transform: none; /* Removida a transformação de centralização Y anterior */
                 margin-bottom: 0;
-                width: 40px;
+                width: 40px; /* Mantém o tamanho original de desktop sugerido */
                 height: 40px;
                 font-size: 18px;
             }
             .theme-toggle-btn:hover {
-                transform: translateY(-50%) scale(1.08);
+                transform: scale(1.08); /* Ajustado apenas para aumentar a escala no hover */
             }
             .logo-box {
-                width: 85px;
-                height: 85px;
+                width: 115px; /* Tamanho das logos significativamente maior no Desktop */
+                height: 115px;
             }
             .header-titles h1 {
                 font-size: 24px;
@@ -330,11 +333,11 @@
 <body>
 
 <header class="header-banner">
+    <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Alternar Tema Claro/Escuro" title="Alternar Modo Claro/Escuro">
+        <span id="themeIcon">🌙</span>
+    </button>
+    
     <div class="header-container">
-        <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Alternar Tema Claro/Escuro" title="Alternar Modo Claro/Escuro">
-            <span id="themeIcon">🌙</span>
-        </button>
-
         <div class="header-brand-row">
             <div class="logo-box">
                 <!-- Alterado para puxar da nova pasta "image" -->
