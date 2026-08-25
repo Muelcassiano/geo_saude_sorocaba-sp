@@ -10,40 +10,174 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
     <style>
+        :root {
+            --bg-body: #f4f6f9;
+            --bg-card: #ffffff;
+            --text-color: #333333;
+            --text-heading: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #cbd5e1;
+            --header-bg: #00529b;
+            --header-text: #ffffff;
+            --input-bg: #ffffff;
+            --input-text: #333333;
+            --btn-bg: #2563eb;
+            --modal-bg: #ffffff;
+            --toggle-bg: rgba(255, 255, 255, 0.2);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --rotulo-shadow: #FFF;
+        }
+
+        body.dark-theme {
+            --bg-body: #0b1329;
+            --bg-card: #131e36;
+            --text-color: #cbd5e1;
+            --text-heading: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #1e293b;
+            --header-bg: #080d1a;
+            --header-text: #ffffff;
+            --input-bg: #0b1329;
+            --input-text: #f8fafc;
+            --btn-bg: #3b82f6;
+            --modal-bg: #131e36;
+            --toggle-bg: rgba(255, 255, 255, 0.15);
+            --shadow-color: rgba(0, 0, 0, 0.4);
+            --rotulo-shadow: #000;
+        }
+
+        * {
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0; 
-            padding: 20px; 
-            background-color: #f4f6f9; 
-            color: #333;
+            padding: 0 0 30px 0; 
+            background-color: var(--bg-body); 
+            color: var(--text-color);
         }
+
+        /* BANNER DO TOPO / HEADER */
+        .header-banner {
+            background-color: var(--header-bg);
+            color: var(--header-text);
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-bottom: 25px;
+            width: 100%;
+        }
+
+        .header-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle-btn {
+            background: var(--toggle-bg);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            color: #facc15;
+            transition: transform 0.2s, background-color 0.2s;
+            margin-bottom: 12px;
+            z-index: 10;
+        }
+
+        .theme-toggle-btn:hover {
+            transform: scale(1.08);
+        }
+
+        .header-brand-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 15px;
+        }
+
+        .logo-box {
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            flex-shrink: 0;
+        }
+
+        .logo-img {
+            max-height: 65px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .header-titles {
+            flex: 1;
+            text-align: center;
+        }
+
+        .header-titles h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.25;
+        }
+
+        .header-titles p {
+            margin: 6px 0 0 0;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 400;
+        }
+
+        /* CONTAINER PRINCIPAL */
         .container { 
             max-width: 850px;
             margin: 0 auto; 
-            background: white; 
+            background: var(--bg-card); 
             padding: 25px; 
             border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 15px var(--shadow-color);
         }
-        h2 { margin-top: 0; color: #1e293b; font-size: 24px; }
-        p { color: #64748b; font-size: 15px; margin-bottom: 20px; }
+
+        h2 { margin-top: 0; color: var(--text-heading); font-size: 24px; }
+        p { color: var(--text-muted); font-size: 15px; margin-bottom: 20px; }
         
         .busca-box { 
             display: flex;
             gap: 10px; 
             margin-bottom: 20px; 
         }
+
         input[type="text"] { 
             flex: 1;
             padding: 14px; 
-            border: 1px solid #cbd5e1; 
+            border: 1px solid var(--border-color); 
             border-radius: 6px; 
             font-size: 16px; 
             outline: none;
-            transition: border-color 0.2s;
+            background-color: var(--input-bg);
+            color: var(--input-text);
         }
+
         input[type="text"]:focus { border-color: #3b82f6; }
-        button { 
+
+        button#btnBuscar { 
             padding: 14px 28px;
             background-color: #94a3b8; 
             color: white; 
@@ -67,6 +201,7 @@
             z-index: 1; 
             box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
         }
+
         #resultado { 
             margin-top: 20px;
             padding: 18px; 
@@ -81,68 +216,132 @@
         .erro { background-color: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
         .info { background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
 
+        body.dark-theme .sucesso { background-color: #064e3b; color: #a7f3d0; border-color: #047857; }
+        body.dark-theme .erro { background-color: #7f1d1d; color: #fca5a5; border-color: #991b1b; }
+        body.dark-theme .info { background-color: #1e3a8a; color: #bfdbfe; border-color: #1d4ed8; }
+
         .rotulo-ubs {
             background: none;
             border: none;
             box-shadow: none;
             font-size: 14px;
             font-weight: 900;
-            color: #1e293b;
+            color: var(--text-heading);
             text-align: center;
             text-shadow: 
-                -2px -2px 0 #FFF, 2px -2px 0 #FFF, 
-                -2px 2px 0 #FFF, 2px 2px 0 #FFF,
-                -1px 0px 0 #FFF, 1px 0px 0 #FFF,
-                0px -1px 0 #FFF, 0px 1px 0 #FFF;
+                -2px -2px 0 var(--rotulo-shadow), 2px -2px 0 var(--rotulo-shadow), 
+                -2px 2px 0 var(--rotulo-shadow), 2px 2px 0 var(--rotulo-shadow),
+                -1px 0px 0 var(--rotulo-shadow), 1px 0px 0 var(--rotulo-shadow),
+                0px -1px 0 var(--rotulo-shadow), 0px 1px 0 var(--rotulo-shadow);
         }
 
         .ubs-item { margin-bottom: 8px; }
         .ubs-clickable {
             cursor: pointer;
             text-decoration: underline;
-            color: #065f46;
+            color: #10b981;
             transition: color 0.2s;
         }
-        .ubs-clickable:hover { color: #047857; }
+        .ubs-clickable:hover { color: #059669; }
         
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4); z-index: 2000;
+            background: rgba(0,0,0,0.5); z-index: 2000;
             display: none; align-items: center; justify-content: center;
         }
+
         .modal-content {
-            background: #fff;
+            background: var(--modal-bg);
             padding: 25px; border-radius: 10px;
             width: 90%; max-width: 450px; position: relative;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            color: #333; font-weight: normal;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            color: var(--text-color); font-weight: normal;
             line-height: 1.6;
         }
+
         .modal-close {
             position: absolute;
             top: 12px; right: 18px;
-            cursor: pointer; font-size: 22px; font-weight: bold; color: #94a3b8;
+            cursor: pointer; font-size: 22px; font-weight: bold; color: var(--text-muted);
             transition: color 0.2s;
         }
+
         .modal-close:hover { color: #ef4444; }
-        .modal-titulo { font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 10px; margin-top: 0;}
+        .modal-titulo { font-size: 18px; font-weight: bold; color: var(--text-heading); margin-bottom: 10px; margin-top: 0;}
         .modal-endereco { margin-bottom: 15px; }
         .modal-horario { font-size: 15px; }
 
-        @media (max-width: 600px) {
-            body { padding: 10px; }
-            .container { padding: 15px; }
+        /* REGRAS RESPONSIVAS DE DESKTOP E CELULAR */
+        @media (min-width: 769px) {
+            .header-container {
+                flex-direction: row;
+                justify-content: center;
+            }
+            .theme-toggle-btn {
+                position: absolute;
+                right: 0;
+                top: 50%;
+                transform: translateY(-50%);
+                margin-bottom: 0;
+            }
+            .theme-toggle-btn:hover {
+                transform: translateY(-50%) scale(1.08);
+            }
+            .logo-img {
+                max-height: 75px;
+            }
+            .header-titles h1 {
+                font-size: 24px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body { padding-bottom: 15px; }
+            .container { padding: 18px; margin: 0 10px; }
+            .logo-img { max-height: 55px; }
+            .header-titles h1 { font-size: 17px; }
+            .header-titles p { font-size: 11px; }
+        }
+
+        @media (max-width: 500px) {
             .busca-box { flex-direction: column; }
-            button { width: 100%; }
+            button#btnBuscar { width: 100%; }
             h2 { font-size: 20px; }
+            .logo-box { padding: 4px 6px; }
+            .logo-img { max-height: 46px; }
+            .header-titles h1 { font-size: 14px; }
+            .header-titles p { font-size: 10px; }
         }
     </style>
 </head>
 <body>
 
+<header class="header-banner">
+    <div class="header-container">
+        <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Alternar Tema Claro/Escuro" title="Alternar Modo Claro/Escuro">
+            <span id="themeIcon">🌙</span>
+        </button>
+
+        <div class="header-brand-row">
+            <div class="logo-box">
+                <img src="logo_prefeitura_sorocaba_sp.png" alt="Prefeitura de Sorocaba" class="logo-img">
+            </div>
+
+            <div class="header-titles">
+                <h1>Descubra sua UBS - Sorocaba (SP)</h1>
+                <p>Prefeitura Municipal de Sorocaba – Secretaria da Saúde</p>
+            </div>
+
+            <div class="logo-box">
+                <img src="logo_vigilancia_e_saude_sorocaba_sp.png" alt="Vigilância em Saúde" class="logo-img">
+            </div>
+        </div>
+    </div>
+</header>
+
 <div class="container">
-    <h2>Descubra sua UBS - Sorocaba (SP)</h2>
+    <h2>Busca de Endereço e Abrangência</h2>
     <p>Digite seu logradouro (Exemplos: Avenida Itavuvu, Avenida Brasil 60 ou 18071650):</p>
     
     <div class="busca-box">
@@ -164,6 +363,38 @@
 </div>
 
 <script>
+    // =========================================================================
+    // LÓGICA DE ALTERNÂNCIA DE TEMA (MODO CLARO / ESCURO)
+    // =========================================================================
+    function toggleTheme() {
+        const body = document.body;
+        const themeIcon = document.getElementById('themeIcon');
+        if (body.classList.contains('dark-theme')) {
+            body.classList.remove('dark-theme');
+            themeIcon.innerText = '🌙';
+            localStorage.setItem('theme_preference', 'light');
+        } else {
+            body.classList.add('dark-theme');
+            themeIcon.innerText = '☀️';
+            localStorage.setItem('theme_preference', 'dark');
+        }
+    }
+
+    // Aplica tema salvo no LocalStorage no carregamento inicial
+    (function aplicarTemaSalvo() {
+        const temaSalvo = localStorage.getItem('theme_preference');
+        if (temaSalvo === 'dark') {
+            document.body.classList.add('dark-theme');
+            document.addEventListener('DOMContentLoaded', () => {
+                const icon = document.getElementById('themeIcon');
+                if (icon) icon.innerText = '☀️';
+            });
+        }
+    })();
+
+    // =========================================================================
+    // LÓGICA DE BUSCA, MAPA E LOTES
+    // =========================================================================
     let dadosUbs = null;
     let indexLotesPorRua = new Map(); 
     let map = null;
@@ -229,7 +460,7 @@
         if (btn) {
             btn.disabled = false;
             btn.innerText = "Buscar";
-            btn.style.backgroundColor = "#2563eb";
+            btn.style.backgroundColor = "var(--btn-bg)";
             btn.style.cursor = "pointer";
         }
     }
@@ -476,7 +707,7 @@
                         let nomeDaUbsAtribuidaNoLote = resultadoLote.refFeatureUbsLote.properties[keyUbsLote];
                         let coords = getSafeCoord(resultadoLote.feature);
                         let latCentro = coords[1], lonCentro = coords[0];
-                        let tipoTexto = resultadoLote.tipo === 'exato' ? '' : '<br><small style="color:#64748b; font-weight:normal;"><i>(A numeração exata não consta no mapeamento oficial. A localização foi aproximada de forma inteligente.)</i></small>';
+                        let tipoTexto = resultadoLote.tipo === 'exato' ? '' : '<br><small style="font-weight:normal; opacity: 0.85;"><i>(A numeração exata não consta no mapeamento oficial. A localização foi aproximada de forma inteligente.)</i></small>';
                         let popupHTML = `<b>Localização Encontrada:</b><br><b>${resultadoLote.nome.toUpperCase()}, ${numeroBuscado} -</b> Sorocaba, São Paulo, Brasil${tipoTexto}`;
                         
                         initMap(latCentro, lonCentro);
@@ -504,7 +735,7 @@
                                     } catch (e) {}
                                 }
                             });
-                            htmlRes += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Quer saber o endereço? clique ou toque na sua UBS</i></small>`;
+                            htmlRes += `<br><small style="font-weight:normal; opacity:0.85;"><i>Nota: Quer saber o endereço? clique ou toque na sua UBS</i></small>`;
                             mostrarResultado(htmlRes, "sucesso");
                         } else {
                             mostrarResultado(`Endereço localizado, mas sem região de UBS atrelada no momento.`, "erro");
@@ -556,9 +787,9 @@
                             }
                         });
                         if (ubsSet.size > 1) {
-                            htmlRes += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via abrange múltiplas regiões.<br>Para saber a UBS exata, inclua o número do imóvel.</i><br>📍 Quer saber o endereço? clique na UBS</small>`;
+                            htmlRes += `<br><small style="font-weight:normal; opacity:0.85;"><i>Nota: Esta via abrange múltiplas regiões.<br>Para saber a UBS exata, inclua o número do imóvel.</i><br>📍 Quer saber o endereço? clique na UBS</small>`;
                         } else {
-                            htmlRes += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Quer saber o endereço? clique na sua UBS</i></small>`;
+                            htmlRes += `<br><small style="font-weight:normal; opacity:0.85;"><i>Nota: Quer saber o endereço? clique na sua UBS</i></small>`;
                         }
                         mostrarResultado(htmlRes, "sucesso");
                         map.fitBounds(boundsGeral, { padding: [30, 30] });
@@ -713,9 +944,9 @@
                 } catch (e) {}
             });
             if (!temNumero && ubsEncontradasFeatures.length > 1) {
-                htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Esta via abrange múltiplas regiões.<br>Para saber a UBS exata, inclua o número do imóvel.</i><br>📍 Quer saber o endereço? clique na UBS</small>`;
+                htmlResultado += `<br><small style="font-weight:normal; opacity:0.85;"><i>Nota: Esta via abrange múltiplas regiões.<br>Para saber a UBS exata, inclua o número do imóvel.</i><br>📍 Quer saber o endereço? clique na UBS</small>`;
             } else {
-                htmlResultado += `<br><small style="color:#64748b; font-weight:normal;"><i>Nota: Quer saber o endereço? clique na sua UBS</i></small>`;
+                htmlResultado += `<br><small style="font-weight:normal; opacity:0.85;"><i>Nota: Quer saber o endereço? clique na sua UBS</i></small>`;
             }
 
             mostrarResultado(htmlResultado, "sucesso");
