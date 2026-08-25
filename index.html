@@ -63,7 +63,7 @@
         .header-banner {
             background-color: var(--header-bg);
             color: var(--header-text);
-            padding: 15px 20px;
+            padding: 10px 15px; /* Reduzido para não ficar uma tarja larga no celular */
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             margin-bottom: 25px;
             width: 100%;
@@ -83,16 +83,17 @@
             background: var(--toggle-bg);
             border: 2px solid rgba(255,255,255,0.3);
             border-radius: 50%;
-            width: 44px;
-            height: 44px;
+            /* Tamanho reduzido para dar destaque às logos no mobile */
+            width: 32px;
+            height: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 20px;
+            font-size: 16px; 
             color: #facc15;
             transition: transform 0.2s, background-color 0.2s;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             z-index: 10;
         }
 
@@ -105,24 +106,27 @@
             align-items: center;
             justify-content: space-between;
             width: 100%;
-            gap: 15px;
+            gap: 10px;
         }
 
+        /* Caixas de logo com tamanho fixo para forçar proporção igual */
         .logo-box {
             background: #ffffff;
-            border-radius: 10px;
-            padding: 6px 10px;
+            border-radius: 8px;
+            padding: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             flex-shrink: 0;
+            width: 75px;
+            height: 75px;
         }
 
         .logo-img {
-            max-height: 65px;
-            width: auto;
-            object-fit: contain;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; /* Garante que a imagem caiba sem esticar */
         }
 
         .header-titles {
@@ -132,15 +136,15 @@
 
         .header-titles h1 {
             margin: 0;
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 700;
             color: #ffffff;
-            line-height: 1.25;
+            line-height: 1.2;
         }
 
         .header-titles p {
-            margin: 6px 0 0 0;
-            font-size: 13px;
+            margin: 4px 0 0 0;
+            font-size: 12px;
             color: rgba(255, 255, 255, 0.9);
             font-weight: 400;
         }
@@ -284,34 +288,42 @@
                 top: 50%;
                 transform: translateY(-50%);
                 margin-bottom: 0;
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
             }
             .theme-toggle-btn:hover {
                 transform: translateY(-50%) scale(1.08);
             }
-            .logo-img {
-                max-height: 75px;
+            .logo-box {
+                width: 85px;
+                height: 85px;
             }
             .header-titles h1 {
                 font-size: 24px;
+            }
+            .header-titles p {
+                font-size: 14px;
             }
         }
 
         @media (max-width: 768px) {
             body { padding-bottom: 15px; }
             .container { padding: 18px; margin: 0 10px; }
-            .logo-img { max-height: 55px; }
             .header-titles h1 { font-size: 17px; }
             .header-titles p { font-size: 11px; }
+            .logo-box { width: 65px; height: 65px; }
         }
 
         @media (max-width: 500px) {
             .busca-box { flex-direction: column; }
             button#btnBuscar { width: 100%; }
             h2 { font-size: 20px; }
-            .logo-box { padding: 4px 6px; }
-            .logo-img { max-height: 46px; }
-            .header-titles h1 { font-size: 14px; }
-            .header-titles p { font-size: 10px; }
+            .logo-box { width: 60px; height: 60px; padding: 4px; }
+            .header-titles h1 { font-size: 15px; }
+            .header-titles p { font-size: 10px; line-height: 1.1; }
+            .theme-toggle-btn { width: 28px; height: 28px; font-size: 14px; margin-bottom: 8px;}
+            .header-banner { padding: 10px 8px; }
         }
     </style>
 </head>
@@ -325,7 +337,8 @@
 
         <div class="header-brand-row">
             <div class="logo-box">
-                <img src="logo_prefeitura_sorocaba_sp.png" alt="Prefeitura de Sorocaba" class="logo-img">
+                <!-- Alterado para puxar da nova pasta "image" -->
+                <img src="image/logo_prefeitura_sorocaba_sp.png" alt="Prefeitura de Sorocaba" class="logo-img">
             </div>
 
             <div class="header-titles">
@@ -334,7 +347,8 @@
             </div>
 
             <div class="logo-box">
-                <img src="logo_vigilancia_e_saude_sorocaba_sp.png" alt="Vigilância em Saúde" class="logo-img">
+                <!-- Alterado para puxar da nova pasta "image" e corrigido para a extensão .jpg -->
+                <img src="image/logo_vigilancia_e_saude_sorocaba_sp.jpg" alt="Vigilância em Saúde" class="logo-img">
             </div>
         </div>
     </div>
