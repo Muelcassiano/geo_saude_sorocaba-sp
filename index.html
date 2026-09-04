@@ -917,14 +917,24 @@
                         let nomeDaUbsAtribuidaNoLote = resultadoLote.refFeatureUbsLote.properties[keyUbsLote];
                         let coords = getSafeCoord(resultadoLote.feature);
                         let latCentro = coords[1], lonCentro = coords[0];
+                        let bairroResultado = extrairBairro(resultadoLote.refFeatureUbsLote.properties.END);
+                        let cepResultadoInicial = formatarCep(cepInformado);
+                        let cepResultadoId = `cep-resultado-${++contadorCep}`;
                         let tipoTexto = resultadoLote.tipo === 'exato' ? '' : '<br><small style="font-weight:normal; opacity: 0.85;"><i>(A numeração exata não consta no mapeamento oficial. A localização foi aproximada de forma inteligente.)</i></small>';
-                        let popupHTML = `<b>Localização Encontrada:</b><br><b>${resultadoLote.nome.toUpperCase()}, ${numeroBuscado} -</b> Sorocaba, São Paulo, Brasil${tipoTexto}`;
+                        let popupHTML = `<b>Logradouro Encontrado:</b><br><b>${resultadoLote.nome.toUpperCase()}, ${numeroBuscado}</b><br>${formatarLinhaLocalizacao(bairroResultado)}<br><b>CEP: ${cepResultadoInicial || 'consultando...'}</b>${tipoTexto}`;
                         
                         initMap(latCentro, lonCentro);
                         L.marker([latCentro, lonCentro]).addTo(camadasBusca).bindPopup(popupHTML).openPopup();
+                        if (!cepInformado) buscarCepPorCoordenada(latCentro, lonCentro, resultadoLote.nome, cep => {
+                            const cepFormatado = formatarCep(cep) || 'não localizado';
+                            const popupAtualizado = `<b>Logradouro Encontrado:</b><br><b>${resultadoLote.nome.toUpperCase()}, ${numeroBuscado}</b><br>${formatarLinhaLocalizacao(bairroResultado)}<br><b>CEP: ${cepFormatado}</b>${tipoTexto}`;
+                            camadasBusca.eachLayer(layer => { if (layer.getPopup) layer.setPopupContent(popupAtualizado); });
+                            const cepNoResultado = document.getElementById(cepResultadoId);
+                            if (cepNoResultado) cepNoResultado.textContent = cepFormatado;
+                        });
                         if (nomeDaUbsAtribuidaNoLote && dadosUbs) {
                             let ubsLimpa = nomeDaUbsAtribuidaNoLote.trim();
-                            let htmlRes = `📍 <b>Localização e Numeração identificadas!</b><br>Este imóvel é atendido pela:<br><br>`;
+                            let htmlRes = `<b>Logradouro Encontrado:</b><br><b>${resultadoLote.nome.toUpperCase()}, ${numeroBuscado}</b><br>${formatarLinhaLocalizacao(bairroResultado)}<br><b>CEP: <span id="${cepResultadoId}">${cepResultadoInicial || 'consultando...'}</span></b><br><br>Este imóvel é atendido pela:<br><br>`;
                             turf.featureEach(dadosUbs, function (ubsPoligono) {
                                 let nomePoligonoLimpo = ubsPoligono.properties.UBS ? ubsPoligono.properties.UBS.trim() : "";
                                 if (nomePoligonoLimpo.toLowerCase() === ubsLimpa.toLowerCase()) {
