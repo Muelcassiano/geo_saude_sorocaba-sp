@@ -138,15 +138,16 @@ ViaCEP API (JSON)                 |
 
 ---
 
-## 👤 Autores:
+## 👤 Autores
 
-**Samuel Abreu**  
+**Samuel Abreu:**  
 _Desenvolvedor de Software & Cientista de Dados / Servidor Público da Divisão de Zoonoses no Setor de Vigilância e Saúde de Sorocaba - SP_
 
 - **Email:** [samuel.abreux@gmail.com](mailto:samuel.abreux@gmail.com)
 - **Foco de Atuação:** Engenharia de Dados, Georreferenciamento, Aplicações Web de Alta Performance, Arquitetura em Nuvem e Soluções para o Setor Público.
 
-**João Enser**  
+##
+**João Enser:**  
 _Biologo, Mestre pela Universidade de São Paulo - USP, entusiasta de Inteligência Artificial e Ciencia de Dados / Servidor Púiblico da Divisão de Zoonoses no Setor de Vigilância e Saúde de Sorocaba - SP_
 
 ---
