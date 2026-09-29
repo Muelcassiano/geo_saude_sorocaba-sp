@@ -60,8 +60,8 @@ Para estruturar a malha territorial com rigor métrico e fidelidade sanitária, 
 
 - **Mecanismo de Busca Híbrido e Unificado**:
   - Consulta por **Nome do Logradouro** (ex: `Avenida Itavuvu`, `Rua João Roman Lopes`).
-  - Consulta por **Logradouro com Numeração Predial** (ex: `Avenida Brasil 60`, `Rua João Roman Lopes 19`), realizando georreferenciamento exato ou interpolação municipal inteligente.
-  - Consulta por **CEP** (ex: `18055-023` ou `18072805`), localizando o endereço e a abrangência sanitária com alta velocidade.
+  - Consulta por **Logradouro com Numeração Predial** (ex: `Avenida Brasil 60`, `Rua Nain 57`), realizando georreferenciamento exato ou interpolação municipal inteligente.
+  - Consulta por **CEP** (ex: `18071-650` ou `18072805`), localizando o endereço e a abrangência sanitária com alta velocidade.
 - **Detalhamento Máximo e Padronização de Bairros**:
   - Unificação de resultados entre todas as formas de busca (logradouro, CEP ou numeração).
   - Identificação de subdivisões específicas de loteamentos e vilas (ex: `Jardim Wanel Ville I`, `Parque São Bento II`, `Núcleo Habitacional Itanguá II`, `Golden Park II`), superando a limitação de macro-bairros genéricos.
