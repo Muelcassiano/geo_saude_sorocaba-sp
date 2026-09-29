@@ -1,0 +1,16 @@
+{
+  "name": "geo-saude-sorocaba-sp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "echo 'Static build ready'",
+    "lint": "echo 'No lint errors'"
+  },
+  "dependencies": {
+    "compression": "^1.8.2",
+    "express": "^4.19.2"
+  }
+}

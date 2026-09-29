@@ -1,0 +1,8 @@
+{
+  "name": "Geo Saúde Sorocaba",
+  "description": "Busca de endereço por UBS e área de abrangência em Sorocaba (SP). Localize sua Unidade Básica de Saúde por rua, número ou CEP.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
