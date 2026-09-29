@@ -1,0 +1,20 @@
+{
+  "name": "geo_saude_sorocaba-sp",
+  "version": "1.0.0",
+  "description": "Busca de endereço por UBS e área de abrangência em Sorocaba (SP)",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static HTML project - no build step required'"
+  },
+  "keywords": [
+    "sorocaba",
+    "ubs",
+    "saude",
+    "geolocation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@vercel/speed-insights": "^2.0.0"
+  }
+}
