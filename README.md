@@ -2,10 +2,10 @@
 
 > **Sistema Geográfico Institucional de Territorialização e Apoio à Rede de Atenção Básica e Vigilância em Saúde de Sorocaba (SP)**
 
-[![Prefeitura de Sorocaba](https://img.shields.io/badge/Prefeitura%20Municipal-Sorocaba%20(SP)-034ea2.svg)](https://www.sorocaba.sp.gov.br/)
+[![Prefeitura de Sorocaba](<https://img.shields.io/badge/Prefeitura%20Municipal-Sorocaba%20(SP)-034ea2.svg>)](https://www.sorocaba.sp.gov.br/)
 [![Secretaria da Saúde](https://img.shields.io/badge/Secretaria%20da%20Sa%C3%BAde-SES%20Sorocaba-059669.svg)](https://saude.sorocaba.sp.gov.br/)
-[![Vigilância em Saúde](https://img.shields.io/badge/%C3%81rea-Vigil%C3%A2ncia%20em%20Sa%C3%BAde-2563eb.svg)]()
-[![Status](https://img.shields.io/badge/Status-Produ%C3%A7%C3%A3o%20%2F%20Ativo-success.svg)]()
+[![Vigilância em Saúde](https://img.shields.io/badge/%C3%81rea-Vigil%C3%A2ncia%20em%20Sa%C3%BAde-2563eb.svg)](https://sites.google.com/view/vigilancia-sanitaria?pli=1&authuser=0)
+[![Status](https://img.shields.io/badge/Status-Produ%C3%A7%C3%A3o%20%2F%20Ativo-success.svg)](ruas-ubs-sorocaba.vercel.app)
 
 ---
 
@@ -44,11 +44,11 @@ Para estruturar a malha territorial com rigor métrico e fidelidade sanitária, 
 
 2. **Delimitação e Ordenação das 33 Microrregiões de UBSs**:
    - Construção e vetorização dos polígonos de abrangência das 33 Unidades Básicas de Saúde municipais.
-   - Aplicação de rotinas topológicas no QGIS para validação de geometrias: correção de frestas (*gaps*), sobreposições espúrias (*overlaps*) e dissolução (*dissolve*) por código de microrregião sanitária.
+   - Aplicação de rotinas topológicas no QGIS para validação de geometrias: correção de frestas (_gaps_), sobreposições espúrias (_overlaps_) e dissolução (_dissolve_) por código de microrregião sanitária.
    - Ordenação espacial e simplificação de Douglas-Peucker controlada, permitindo altíssima acurácia com geometria leve otimizada para navegadores web e dispositivos móveis.
 
 3. **Extração Cartográfica de Centróides e Rotulagem**:
-   - Geração de centróides geométricos verdadeiros (*true centroids*) e de superfície (*point on surface*) para cada polígono de UBS via algoritmos nativos do QGIS.
+   - Geração de centróides geométricos verdadeiros (_true centroids_) e de superfície (_point on surface_) para cada polígono de UBS via algoritmos nativos do QGIS.
    - Esses centróides alimentam o motor de renderização da aplicação para posicionamento automático de rótulos visuais flutuantes, centralização dinâmica de câmera e enquadramento de bounds no Leaflet.
 
 4. **Processamento da Base de Lotes Cadastrais**:
@@ -138,28 +138,16 @@ ViaCEP API (JSON)                 |
 
 ---
 
-## 👤 Autor
+## 👤 Autores:
 
 **Samuel Abreu**  
-*Desenvolvedor de Software & Cientista de Dados*  
-- **Email:** [samuel.abreux@gmail.com](mailto:samuel.abreux@gmail.com)  
-- **Foco de Atuação:** Engenharia de Dados e Georreferenciamento, Aplicações Web de Alta Performance, Arquitetura em Nuvem e Soluções para o Setor Público.
-- **Contribuição no Projeto:** Concepção estratégica, engenharia de dados geoespaciais com QGIS, modelagem de microrregiões sanitárias e desenvolvimento integral da aplicação.
+_Desenvolvedor de Software & Cientista de Dados / Servidor Público da Divisão de Zoonoses no Setor de Vigilância e Saúde de Sorocaba - SP_
 
----
+- **Email:** [samuel.abreux@gmail.com](mailto:samuel.abreux@gmail.com)
+- **Foco de Atuação:** Engenharia de Dados, Georreferenciamento, Aplicações Web de Alta Performance, Arquitetura em Nuvem e Soluções para o Setor Público.
 
-## 👥 Créditos Institucionais
-
-- **Desenvolvimento e Concepção Técnica**: Setor de Vigilância em Saúde de Sorocaba / Secretaria da Saúde.
-- **Apoio Institucional**:
-  - Prefeitura Municipal de Sorocaba (SP).
-  - Secretaria da Saúde de Sorocaba (SES).
-  - Vigilância Epidemiológica (VE) — SINAN, SIM e SINASC.
-  - Divisão de Zoonoses — Boletins de Campo e Controle Vetorial.
-- **Bases Cartográficas e Demográficas**:
-  - Instituto Brasileiro de Geografia e Estatística (IBGE) — Censo Demográfico e Setores Censitários.
-  - Mapeamento Municipal de Lotes e Abrangência Territorial das UBSs de Sorocaba.
-  - OpenStreetMap e Contribuidores.
+**João Enser**  
+_Biologo, Mestre pela Universidade de São Paulo - USP, entusiasta de Inteligência Artificial e Ciencia de Dados / Servidor Púiblico da Divisão de Zoonoses no Setor de Vigilância e Saúde de Sorocaba - SP_
 
 ---
 
