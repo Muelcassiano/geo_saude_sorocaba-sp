@@ -5,7 +5,7 @@
 [![Prefeitura de Sorocaba](<https://img.shields.io/badge/Prefeitura%20Municipal-Sorocaba%20(SP)-034ea2.svg>)](https://www.sorocaba.sp.gov.br/)
 [![Secretaria da Saúde](https://img.shields.io/badge/Secretaria%20da%20Sa%C3%BAde-SES%20Sorocaba-059669.svg)](https://saude.sorocaba.sp.gov.br/)
 [![Vigilância em Saúde](https://img.shields.io/badge/%C3%81rea-Vigil%C3%A2ncia%20em%20Sa%C3%BAde-2563eb.svg)](https://sites.google.com/view/vigilancia-sanitaria?pli=1&authuser=0)
-[![Status](https://img.shields.io/badge/Status-Produ%C3%A7%C3%A3o%20%2F%20Ativo-success.svg)](ruas-ubs-sorocaba.vercel.app)
+[![Status](https://img.shields.io/badge/Status-Produ%C3%A7%C3%A3o%20%2F%20Ativo-success.svg)](https://ruas-ubs-sorocaba.vercel.app/)
 
 ---
 
