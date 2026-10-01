@@ -421,6 +421,41 @@
             background: rgba(16, 185, 129, 0.08);
         }
 
+        .clickable-bairro-tag {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .clickable-bairro-tag:hover {
+            border-color: #10b981 !important;
+            background: rgba(16, 185, 129, 0.15) !important;
+            color: #059669 !important;
+            transform: translateY(-1px);
+        }
+
+        .btn-trocar-bairro {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--btn-bg);
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        .btn-trocar-bairro:hover {
+            border-color: #10b981;
+            color: #059669;
+            background: rgba(16, 185, 129, 0.12);
+        }
+
         /* REGRAS RESPONSIVAS DE DESKTOP E CELULAR */
         @media (min-width: 769px) {
             .header-container {
@@ -671,8 +706,12 @@
             baseScore = 1500;
         } else if (nomeNorm.startsWith(buscaNorm)) {
             baseScore = 1200 - Math.min(200, (nomeNorm.length - buscaNorm.length) * 2);
+        } else if (buscaNorm.startsWith(nomeNorm)) {
+            baseScore = 1200 - Math.min(200, (buscaNorm.length - nomeNorm.length) * 2);
         } else if (nomeNorm.includes(` ${buscaNorm} `) || nomeNorm.includes(buscaNorm)) {
             baseScore = 800 - Math.min(300, nomeNorm.length);
+        } else if (buscaNorm.includes(` ${nomeNorm} `) || buscaNorm.includes(nomeNorm)) {
+            baseScore = 800 - Math.min(300, buscaNorm.length);
         } else {
             return -1;
         }
@@ -787,7 +826,7 @@
 
         if (tituloEl) tituloEl.innerText = `Bairros Atendidos — ${ultimoLogradouroBairros.toUpperCase()}`;
         if (subtituloEl) {
-            subtituloEl.innerHTML = `Esta via é extensa e intercepta <b>${ultimosBairrosEncontrados.length} bairros</b> no município de Sorocaba.<br><small style="color:var(--text-muted); font-size:12px;">Para identificar sua UBS de referência exata e o CEP específico da sua residência, realize a busca incluindo o número do imóvel (ex: <i>${ultimoLogradouroBairros} 100</i>).</small>`;
+            subtituloEl.innerHTML = `Esta via é extensa e intercepta <b>${ultimosBairrosEncontrados.length} bairros</b> no município de Sorocaba.<br><small style="color:var(--text-muted); font-size:12px;">Selecione seu bairro abaixo para ver a UBS correspondente, ou realize a busca incluindo o número do imóvel (ex: <i>${ultimoLogradouroBairros} 100</i>).</small>`;
         }
 
         if (listaEl) {
@@ -795,15 +834,10 @@
             ultimosBairrosEncontrados.forEach(bairro => {
                 const item = document.createElement('div');
                 item.className = 'item-bairro-modal';
-                item.innerHTML = `<span>📍 <b>${bairro}</b></span><small style="opacity:0.75; font-size:12px;">Sorocaba, SP</small>`;
-                item.title = `Clique para pesquisar neste logradouro`;
+                item.innerHTML = `<span>📍 <b>${bairro}</b></span><small style="opacity:0.85; font-size:12px; color:var(--btn-bg); font-weight:600;">Selecionar bairro →</small>`;
+                item.title = `Clique para selecionar o bairro ${bairro}`;
                 item.onclick = () => {
-                    fecharModalBairros();
-                    const inputEndereco = document.getElementById('endereco');
-                    if (inputEndereco) {
-                        inputEndereco.value = `${ultimoLogradouroBairros} `;
-                        inputEndereco.focus();
-                    }
+                    selecionarBairroDoLogradouro(nomeAlvo, bairro);
                 };
                 listaEl.appendChild(item);
             });
@@ -821,6 +855,195 @@
         if (event.target === document.getElementById('modal-bairros')) fecharModalBairros();
     }
 
+    function selecionarBairroDoLogradouro(nomeRua, bairro) {
+        fecharModalBairros();
+        if (!nomeRua) nomeRua = ultimoLogradouroBairros;
+        if (!nomeRua || !bairro) return;
+
+        const inputEndereco = document.getElementById('endereco');
+        if (inputEndereco) {
+            inputEndereco.value = `${nomeRua} - ${bairro}`;
+        }
+
+        const ruaNorm = normalizarApenasRua(nomeRua);
+        const lotesDaRua = indexLotesPorRua.get(ruaNorm) || [];
+        const bNorm = normalizarTextoBusca(bairro);
+
+        // 1. Filtrar lotes correspondentes ao bairro selecionado
+        let lotesFiltrados = lotesDaRua.filter(l => {
+            const u = (l.properties[keyUbsLote] || '').trim().toLowerCase();
+            const b = ubsToBairro[u];
+            if (b && normalizarTextoBusca(b) === bNorm) return true;
+            if (bNorm.includes(normalizarTextoBusca(u)) || normalizarTextoBusca(u).includes(bNorm)) return true;
+            return false;
+        });
+
+        // Se não encontrou por ubsToBairro, tenta por cache de coordenadas dos lotes
+        if (lotesFiltrados.length === 0 && lotesDaRua.length > 0) {
+            lotesFiltrados = lotesDaRua.filter(l => {
+                const coords = getSafeCoord(l);
+                if (!coords) return false;
+                const k = `${Number(coords[1]).toFixed(4)},${Number(coords[0]).toFixed(4)}`;
+                const bSalvo = cacheBairros.get(k);
+                return bSalvo && normalizarTextoBusca(bSalvo) === bNorm;
+            });
+        }
+
+        // Se todos os lotes da rua pertencem à mesma UBS (ex: Rua Paraná na UBS Cerrado)
+        if (lotesFiltrados.length === 0 && lotesDaRua.length > 0) {
+            const ubsUnicas = new Set(lotesDaRua.map(l => (l.properties[keyUbsLote] || '').trim()).filter(Boolean));
+            if (ubsUnicas.size === 1) {
+                lotesFiltrados = lotesDaRua;
+            }
+        }
+
+        const aplicarVisualizacaoBairro = (lat, lon, ubsNome, lotesRef) => {
+            initMap(lat, lon);
+            camadasBusca.clearLayers();
+            camadasPoligonos.clearLayers();
+
+            const bairroId = `bairro-selecionado-${++contadorCep}`;
+            const cepId = `cep-selecionado-${contadorCep}`;
+
+            let cepBairro = null;
+            const cepCache = cacheCepsPorLogradouro.get(ruaNorm);
+            if (cepCache && cepCache !== 'VARIA') {
+                cepBairro = formatarCep(cepCache);
+            }
+
+            const rEsc = nomeRua.replace(/'/g, "\\'");
+            const linhaBairroHtml = `${formatarLinhaLocalizacao(bairro)} <button type="button" class="btn-trocar-bairro" onclick="abrirModalBairros('${rEsc}')">🔄 Trocar Bairro</button>`;
+
+            let cepExibido = cepBairro || 'Varia por numeração no bairro (informe o número para consultar)';
+            const popupHTML = `<b>Logradouro Encontrado:</b><br><b>${nomeRua.toUpperCase()}</b><br>${formatarLinhaLocalizacao(bairro)}<br><b>CEP: <span id="popup-${cepId}">${cepExibido}</span></b>`;
+            L.marker([lat, lon]).addTo(camadasBusca).bindPopup(popupHTML).openPopup();
+
+            let htmlResultado = `<b>Logradouro Encontrado:</b><br><b>${nomeRua.toUpperCase()}</b><br><span id="bloco-${bairroId}">${linhaBairroHtml}</span><br><b>CEP: <span id="${cepId}">${cepExibido}</span></b><br><br>`;
+
+            let boundsGeral = L.latLngBounds([[lat, lon]]);
+
+            if (ubsNome && dadosUbs) {
+                let ubsLimpa = ubsNome.trim();
+                turf.featureEach(dadosUbs, ubsPoligono => {
+                    let nomePoligonoLimpo = ubsPoligono.properties.UBS ? ubsPoligono.properties.UBS.trim() : '';
+                    if (nomePoligonoLimpo.toLowerCase() === ubsLimpa.toLowerCase()) {
+                        let codigo = ubsPoligono.properties['Codigo microrregiao'] || ubsPoligono.properties.codigo_microrregiao || 'S/N';
+                        let endSeguro = (ubsPoligono.properties.END || '').replace(/(\r\n|\n|\r)/gm, ' ');
+                        let horSeguro = (ubsPoligono.properties.Horario || '').replace(/(\r\n|\n|\r)/gm, ' ');
+                        let argsCliq = `'${ubsLimpa.replace(/'/g, "\\'")}', '${endSeguro.replace(/'/g, "\\'")}', '${horSeguro.replace(/'/g, "\\'")}'`;
+
+                        htmlResultado += `Este trecho no bairro <b>${bairro}</b> pertence à área da:<br><br>`;
+                        htmlResultado += `<div class="ubs-item">📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${ubsLimpa} - Cod. Microrregião (<b>${codigo}</b>)</span></div>`;
+                        let poliLayer = L.geoJSON(ubsPoligono, { style: { color: '#10b981', weight: 2.5, fillOpacity: 0.12 } }).addTo(camadasPoligonos);
+                        boundsGeral.extend(poliLayer.getBounds());
+                        try {
+                            let centroid = turf.centroid(ubsPoligono);
+                            let coordsC = centroid.geometry.coordinates;
+                            L.marker([coordsC[1], coordsC[0]], {
+                                icon: L.divIcon({ className: 'rotulo-ubs', html: `<div>UBS ${ubsLimpa.toUpperCase()}</div>`, iconSize: [160, 40], iconAnchor: [80, 20] }),
+                                interactive: false
+                            }).addTo(camadasPoligonos);
+                        } catch (e) {}
+                    }
+                });
+                htmlResultado += `<br><small style="font-weight:normal; opacity:0.85;"><i>Nota: Quer saber o endereço? clique na sua UBS</i></small>`;
+                mostrarResultado(htmlResultado, 'sucesso');
+            } else if (lotesRef && lotesRef.length > 0) {
+                const ubsSet = new Set(lotesRef.map(l => l.properties[keyUbsLote]).filter(Boolean).map(u => u.trim().toLowerCase()));
+                htmlResultado += `Atravessa a área de abrangência de <b>${ubsSet.size}</b> UBS(s) no bairro ${bairro}:<br><br>`;
+                if (dadosUbs) {
+                    turf.featureEach(dadosUbs, ubsPoligono => {
+                        let nomeUbs = (ubsPoligono.properties.UBS || '').trim();
+                        if (!ubsSet.has(nomeUbs.toLowerCase())) return;
+                        let codigo = ubsPoligono.properties['Codigo microrregiao'] || ubsPoligono.properties.codigo_microrregiao || 'S/N';
+                        let endSeguro = (ubsPoligono.properties.END || '').replace(/(\r\n|\n|\r)/gm, ' ');
+                        let horSeguro = (ubsPoligono.properties.Horario || '').replace(/(\r\n|\n|\r)/gm, ' ');
+                        let argsCliq = `'${nomeUbs.replace(/'/g, "\\'")}', '${endSeguro.replace(/'/g, "\\'")}', '${horSeguro.replace(/'/g, "\\'")}'`;
+                        htmlResultado += `<div class="ubs-item">📍 <span class="ubs-clickable" onclick="abrirPopupUbs(${argsCliq})">UBS ${nomeUbs} - Cod. Microrregião (<b>${codigo}</b>)</span></div>`;
+                        let camada = L.geoJSON(ubsPoligono, { style: { color: '#10b981', weight: 2.5, fillOpacity: 0.12 } }).addTo(camadasPoligonos);
+                        boundsGeral.extend(camada.getBounds());
+                    });
+                }
+                htmlResultado += `<br><small style="font-weight:normal; opacity:0.85;"><i>Nota: Para identificar a UBS exata dentro do bairro, inclua o número do imóvel.</i></small>`;
+                mostrarResultado(htmlResultado, 'sucesso');
+            } else {
+                mostrarResultado(htmlResultado + `Endereço localizado no bairro ${bairro}, mas sem região de UBS atrelada no momento.`, 'erro');
+            }
+
+            if (boundsGeral.isValid()) {
+                map.fitBounds(boundsGeral, { padding: [30, 30] });
+            } else {
+                map.setView([lat, lon], 16);
+            }
+
+            // Consultar ViaCEP para obter o CEP específico deste bairro no logradouro
+            const termoViaCep = extrairTermoViaCep(nomeRua);
+            if (termoViaCep) {
+                fetch(`https://viacep.com.br/ws/SP/Sorocaba/${encodeURIComponent(termoViaCep)}/json/`)
+                    .then(r => r.ok ? r.json() : [])
+                    .then(lista => {
+                        if (Array.isArray(lista)) {
+                            const doBairro = lista.filter(item => saoMesmoLogradouro(item.logradouro, nomeRua) && normalizarTextoBusca(item.bairro) === bNorm);
+                            if (doBairro.length > 0) {
+                                const cepDoBairro = formatarCep(doBairro[0].cep);
+                                const elCep = document.getElementById(cepId);
+                                if (elCep) elCep.textContent = cepDoBairro;
+                                const elPopupCep = document.getElementById(`popup-${cepId}`);
+                                if (elPopupCep) elPopupCep.textContent = cepDoBairro;
+                            }
+                        }
+                    })
+                    .catch(() => {});
+            }
+        };
+
+        if (lotesFiltrados.length > 0) {
+            const loteCentro = lotesFiltrados[Math.floor(lotesFiltrados.length / 2)];
+            const coords = getSafeCoord(loteCentro);
+            const ubsNome = (loteCentro.properties[keyUbsLote] || '').trim();
+            aplicarVisualizacaoBairro(coords[1], coords[0], ubsNome, lotesFiltrados);
+        } else {
+            mostrarResultado(`Localizando ${nomeRua.toUpperCase()} no bairro ${bairro}...`, 'info');
+            const query = `${nomeRua}, ${bairro}, Sorocaba, SP`;
+            const urlOSM = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&accept-language=pt-BR&email=geosaude.sorocaba.app@gmail.com&q=${encodeURIComponent(query)}`;
+            fetch(urlOSM)
+                .then(r => r.ok ? r.json() : [])
+                .then(resultados => {
+                    let lat = null, lon = null;
+                    if (resultados.length > 0) {
+                        lat = parseFloat(resultados[0].lat);
+                        lon = parseFloat(resultados[0].lon);
+                    } else if (lotesDaRua.length > 0) {
+                        const coords = getSafeCoord(lotesDaRua[0]);
+                        lat = coords[1];
+                        lon = coords[0];
+                    }
+
+                    if (lat !== null && lon !== null) {
+                        let ubsNome = null;
+                        if (dadosUbs) {
+                            const pt = turf.point([lon, lat]);
+                            turf.featureEach(dadosUbs, ubsPoligono => {
+                                if (turf.booleanPointInPolygon(pt, ubsPoligono)) {
+                                    ubsNome = ubsPoligono.properties.UBS ? ubsPoligono.properties.UBS.trim() : null;
+                                }
+                            });
+                        }
+                        aplicarVisualizacaoBairro(lat, lon, ubsNome, null);
+                    } else {
+                        mostrarResultado(`Não foi possível localizar o logradouro no bairro ${bairro}.`, 'erro');
+                    }
+                })
+                .catch(() => {
+                    if (lotesDaRua.length > 0) {
+                        const coords = getSafeCoord(lotesDaRua[0]);
+                        aplicarVisualizacaoBairro(coords[1], coords[0], lotesDaRua[0].properties[keyUbsLote], lotesDaRua);
+                    }
+                });
+        }
+    }
+
+    window.selecionarBairroDoLogradouro = selecionarBairroDoLogradouro;
     window.abrirModalBairros = abrirModalBairros;
     window.fecharModalBairros = fecharModalBairros;
 
@@ -1053,13 +1276,14 @@
         const termoViaCep = extrairTermoViaCep(nomeRua);
         const promises = [];
 
+        let matchesViaCep = [];
         if (termoViaCep) {
             const pViaCep = fetch(`https://viacep.com.br/ws/SP/Sorocaba/${encodeURIComponent(termoViaCep)}/json/`)
                 .then(res => res.ok ? res.json() : [])
                 .then(data => {
                     if (Array.isArray(data)) {
-                        const matches = data.filter(item => saoMesmoLogradouro(item.logradouro, nomeRua));
-                        matches.forEach(item => {
+                        matchesViaCep = data.filter(item => saoMesmoLogradouro(item.logradouro, nomeRua));
+                        matchesViaCep.forEach(item => {
                             if (item.bairro) {
                                 const b = item.bairro.trim();
                                 if (b && b.toLowerCase() !== 'sorocaba') bairrosSet.add(b);
@@ -1097,7 +1321,21 @@
         promises.push(pOSM);
 
         Promise.all(promises).then(() => {
-            const unicos = normalizarListaBairros(bairrosSet);
+            let unicos = normalizarListaBairros(bairrosSet);
+            const ubsLotesSet = new Set((lotesDaRua || []).map(l => l.properties[keyUbsLote]).filter(Boolean));
+
+            // Se o logradouro não está no acervo de vias extensas, tem apenas 1 CEP oficial no ViaCEP
+            // e todos os seus lotes pertencem à mesma UBS (ex: Rua Paraná na UBS Cerrado),
+            // ele é estritamente de um único bairro e não deve ser inflado por divergências de nomes.
+            if (!dicionarioBairrosLogradouros[ruaNorm] && cepsEncontrados.length === 1 && ubsLotesSet.size <= 1) {
+                const bViaCep = matchesViaCep.length > 0 ? matchesViaCep[0].bairro : null;
+                if (bViaCep) {
+                    unicos = [bViaCep];
+                } else if (unicos.length > 1) {
+                    unicos = [unicos[0]];
+                }
+            }
+
             cacheBairrosPorLogradouro.set(ruaNorm, unicos);
 
             let cepUnico = null;
@@ -1191,8 +1429,11 @@
             };
         }
         if (bairros.length === 2) {
+            const b0Esc = (bairros[0] || '').replace(/'/g, "\\'");
+            const b1Esc = (bairros[1] || '').replace(/'/g, "\\'");
+            const rEsc = (nomeRua || '').replace(/'/g, "\\'");
             return {
-                linhaHtml: `<span class="tag-bairro">${bairros[0]}</span> <span class="divisor-bairros">•</span> <span class="tag-bairro">${bairros[1]}</span>, Sorocaba, SP`,
+                linhaHtml: `<span class="tag-bairro clickable-bairro-tag" onclick="selecionarBairroDoLogradouro('${rEsc}', '${b0Esc}')" title="Clique para selecionar ${b0Esc}">${bairros[0]}</span> <span class="divisor-bairros">•</span> <span class="tag-bairro clickable-bairro-tag" onclick="selecionarBairroDoLogradouro('${rEsc}', '${b1Esc}')" title="Clique para selecionar ${b1Esc}">${bairros[1]}</span>, Sorocaba, SP <button type="button" class="btn-ver-bairros" style="margin-left:6px; font-size:11px; padding:2px 8px;" onclick="abrirModalBairros('${rEsc}')">🏘️ Ver bairros</button>`,
                 linhaPopup: `<b>${bairros[0]}</b> <span style="color:#10b981;font-weight:bold;">•</span> <b>${bairros[1]}</b>, Sorocaba, SP`,
                 cepTexto: cepUnico ? formatarCep(cepUnico) : (textoCep === 'Consultando CEP...' ? 'Varia por trecho (consulte com o número do imóvel)' : textoCep),
                 abrirModalAuto: false
@@ -1341,45 +1582,22 @@
     function mostrarOpcoesLogradouro(opcoes, aoSelecionar) {
         const lista = document.getElementById('modal-logradouros-opcoes');
         lista.innerHTML = '';
-        opcoes.forEach((opcao, idx) => {
+        opcoes.forEach(opcao => {
             const botao = document.createElement('button');
             botao.type = 'button';
             botao.className = 'opcao-logradouro';
-
-            const loteRef = opcao.lotes && opcao.lotes[0];
-            const coords = loteRef ? getSafeCoord(loteRef) : null;
-            const lat = coords ? coords[1] : null;
-            const lon = coords ? coords[0] : null;
-
-            const chaveCoord = (lat !== null && lon !== null) ? `${Number(lat).toFixed(4)},${Number(lon).toFixed(4)}` : null;
-            const bairroSalvo = (chaveCoord && cacheBairros.get(chaveCoord)) || (opcao.bairro ? opcao.bairro : null);
-            const spanBairroId = `bairro-modal-item-${idx}`;
-
-            const bairroExibido = bairroSalvo || 'Consultando bairro...';
-            botao.innerHTML = `<b>${opcao.nome.toUpperCase()}</b><br><small id="${spanBairroId}">${bairroExibido}</small>`;
+            botao.style.textAlign = 'left';
+            botao.innerHTML = `<b>${opcao.nome.toUpperCase()}</b><small style="display:block; opacity:0.75; font-size:12px; margin-top:2px;">Sorocaba, SP</small>`;
 
             botao.addEventListener('click', () => {
                 fecharModalLogradouros();
+                const inputEndereco = document.getElementById('endereco');
+                if (inputEndereco) {
+                    inputEndereco.value = opcao.nome;
+                }
                 aoSelecionar(opcao);
             });
             lista.appendChild(botao);
-
-            if (!bairroSalvo && lat !== null && lon !== null) {
-                setTimeout(() => {
-                    buscarDadosLogradouro(lat, lon, opcao.nome, null, ({ bairro }) => {
-                        if (bairro) {
-                            opcao.bairro = bairro;
-                            if (chaveCoord) cacheBairros.set(chaveCoord, bairro);
-                            salvarCacheBairros();
-                            const el = document.getElementById(spanBairroId);
-                            if (el) el.textContent = bairro;
-                        } else {
-                            const el = document.getElementById(spanBairroId);
-                            if (el && el.textContent === 'Consultando bairro...') el.textContent = 'Sorocaba, SP';
-                        }
-                    });
-                }, idx * 120);
-            }
         });
         document.getElementById('modal-logradouros').style.display = 'flex';
     }
