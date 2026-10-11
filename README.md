@@ -68,9 +68,9 @@ A estrutura cartográfica do projeto foi construída através de um rigoroso flu
 ### 1. Mecanismo de Busca Inteligente e Multifacetado
 A aplicação aceita diversos formatos de entrada em uma única caixa de busca:
 - **Por Logradouro** (ex: `Avenida Itavuvu`, `Rua Paraná`, `Rua João Roman Lopes`).
-- **Por Logradouro com Número do Imóvel** (ex: `Avenida Brasil 60`, `Rua João Roman Lopes 19`), localizando o lote exato ou realizando interpolação numérica municipal imediata.
-- **Por CEP** com ou sem hífen (ex: `18055-023` ou `18072805`), identificando a via, o bairro e a UBS de cobertura.
-- **Por CEP com Número Residencial** (ex: `18055-023 100`), direcionando para o trecho exato do imóvel.
+- **Por Logradouro com Número do Imóvel** (ex: `Avenida Brasil 60`, `Rua Nain 57`), localizando o lote exato ou realizando interpolação numérica municipal imediata.
+- **Por CEP** com ou sem hífen (ex: `18071-650` ou `18071650`), identificando a via, o bairro e a UBS de cobertura.
+- **Por CEP com Número Residencial** (ex: `18071650 57`), direcionando para o trecho exato do imóvel.
 
 ### 2. Desambiguação Limpa de Logradouros com Nomes Similares
 - Quando o usuário digita termos com múltiplas ocorrências na malha urbana (ex: digitando `"paraná"`, onde coexistem a *Rua Paraná* e a *Avenida Paraná*, ou nomes com patronímicos semelhantes), a aplicação abre uma janela de escolha clara e limpa.
@@ -193,16 +193,16 @@ A aplicação classifica dinamicamente o comportamento territorial do logradouro
   - Caso queira consultar outro bairro da mesma via, basta clicar no botão **[🔄 Trocar Bairro]** no painel de resultados.
 
 ### 4. Pesquisa por Logradouro com Número Residencial
-- Digite a via e o número do imóvel (ex: `Avenida Brasil 60` ou `Rua João Roman Lopes 19`).
+- Digite a via e o número do imóvel (ex: `Avenida Brasil 60` ou `Rua Nain 57`).
 - O sistema cruzará a numeração com a base cadastral municipal, posicionando o marcador no imóvel e confirmando a UBS de referência da residência.
 
 ### 5. Pesquisa por CEP
-- Digite o CEP no formato `18055-023` ou apenas os números `18055023`.
+- Digite o CEP no formato `18071-650` ou apenas os números `18071650`.
 - A aplicação localiza a via associada e determina a abrangência da UBS correspondente.
-- Também é possível digitar o CEP seguido do número do imóvel (ex: `18055-023 100`).
+- Também é possível digitar o CEP seguido do número do imóvel (ex: `18071-650 57`).
 
 ### 6. Consulta de Detalhes da UBS
-- No painel de resultados ou no marcador do mapa, clique no link em verde da UBS (ex: `📍 UBS Wanel Ville - Cod. Microrregião (47)`).
+- No painel de resultados ou no marcador do mapa, clique no link em verde da UBS (ex: `📍 UBS Wanel Ville - Cod. Microrregião (33)`).
 - Uma janela suspensa apresentará o endereço completo da unidade, horários de funcionamento em dias úteis e funcionamento de urgência/emergência em finais de semana (para unidades com PA 24h).
 
 ### 7. Alternância de Modo Claro e Modo Escuro
